@@ -49,10 +49,15 @@ def get_submissions_data(subreddit,limit, mod_removed_boolean, user_removed_bool
 
 
 def write_to_csv(headers,data):
-    with open('C:/Users/roik2/PycharmProjects/pythonProject1/data.csv','w',encoding='UTF8',newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(headers)
-        writer.writerows(data)
+    #change the path to the path in your computer
+    path = 'C:/Users/roik2/PycharmProjects/pythonProject1/data.csv'
+    try:
+        with open(path,'w',encoding='UTF8',newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(headers)
+            writer.writerows(data)
+    except:
+        print("something wrong")
 
 
 # Press the green button in the gutter to run the script.
