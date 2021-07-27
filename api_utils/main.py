@@ -96,11 +96,16 @@ def get_submissions_data(subreddit, limit, mod_removed_boolean, user_removed_boo
     # write_to_csv(headers, data)
 
 
-def write_to_csv(headers, data):
-    with open('C:/Users/roik2/PycharmProjects/pythonProject1/data.csv', 'w', encoding='UTF8', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(headers)
-        writer.writerows(data)
+def write_to_csv(headers,data):
+    #change the path to the path in your computer
+    path = 'C:/Users/roik2/PycharmProjects/pythonProject1/data.csv'
+    try:
+        with open(path,'w',encoding='UTF8',newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(headers)
+            writer.writerows(data)
+    except:
+        print("something wrong")
 
 
 def read_from_csv(path):
