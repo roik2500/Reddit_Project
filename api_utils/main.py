@@ -21,10 +21,13 @@ def search_submissions_and_comments(Subreddit, start_time, filter, Limit, mod_re
                                              # after=start_time)
     submissions = [post for post in posts]
     submission_ids_list = []
+
     for submission in submissions:
         submission_ids_list.append(submission['id'])
         # convert Time format
         submission['created_utc'] = datetime.datetime.fromtimestamp(submission['created_utc']).isoformat().split("T")
+        #inital comments section
+        submission['comments'] = {}
 
     # The `search_comments` and `search_submissions` methods return generator objects
     comment_ids = api_pmaw.search_submission_comment_ids(ids=submission_ids_list)
@@ -38,7 +41,6 @@ def search_submissions_and_comments(Subreddit, start_time, filter, Limit, mod_re
         # convert Time format
         comment['created_utc'] = datetime.datetime.fromtimestamp(comment['created_utc']).isoformat().split("T")
 
-    posts_df = pd.DataFrame(submissions, index=submission_ids_list)
     comments_df = pd.DataFrame(comment_list, index=comment_id_list)
 
     comments_columns_to_remove = ["all_awardings", "approved_at_utc", "associated_award", "author_flair_background_color",
@@ -48,6 +50,12 @@ def search_submissions_and_comments(Subreddit, start_time, filter, Limit, mod_re
                "distinguished", "edited", "gildings", "is_submitter", "locked", "no_follow", "retrieved_on", "score",
                "send_replies", "stickied", "top_awarded_type", "total_awards_received", "treatment_tags"]
 
+    comments_df.drop(comments_columns_to_remove, axis=1, inplace=True)
+
+    for index, row_comment in comments_df.iterrows():
+        match_comment_to_post(row_comment, submission_ids_list, submissions)
+
+    posts_df = pd.DataFrame(submissions, index=submission_ids_list)
     posts_columns_to_remove = ["all_awardings", "author_flair_css_class", "author_flair_richtext", "author_flair_type",
                "author_patreon_flair", "awarders", "can_mod_post", "score", "gildings", "locked", "no_follow",
                "retrieved_on", "send_replies", "stickied", "total_awards_received","treatment_tags", "allow_live_comments",
@@ -57,12 +65,26 @@ def search_submissions_and_comments(Subreddit, start_time, filter, Limit, mod_re
                'parent_whitelist_status', 'pinned', 'pwls', 'spoiler', 'subreddit_subscribers', 'subreddit_type',
                'thumbnail', 'upvote_ratio', 'whitelist_status', 'wls']
 
-    comments_df.drop(comments_columns_to_remove, axis=1, inplace=True)
     posts_df.drop(posts_columns_to_remove, axis=1, inplace=True)
+
+
 
     # convert pandas to Json
     posts_df.to_json(r'C:\Users\User\Documents\FourthYear\Project\resources\sampleJsonPosts.json', orient="index")
     comments_df.to_json(r'C:\Users\User\Documents\FourthYear\Project\resources\sampleJsonComments.json', orient="index")
+
+
+def match_comment_to_post(comment, submission_ids_list, submissions):
+
+    id = comment['link_id'].replace('t3_', '')
+    index_of_post_in_list = submission_ids_list.index(id)
+
+    #find if there is a nested comment
+    if (submissions[index_of_post_in_list]['comments'].get(comment['id']) == None):
+        submissions[index_of_post_in_list]['comments'].update({comment['id']: comment})
+    else:
+        submissions[index_of_post_in_list]['comments'][comment[id]].update({comment['id']: comment})
+
 
 
 def search_submissions_with_query(subreddit, start_time, end_time, query, limit, mod_removed_boolean, user_removed_boolean):
@@ -137,27 +159,29 @@ def read_from_csv(path):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
+    # df = pd.read_json(r'C:\Users\User\Documents\FourthYear\Project\resources\sampleJsonPosts.json')
+    # df.head()
+    # s=5
 
-
-    subreddits_df = read_from_csv("C:/Users/User/Documents/FourthYear/Project/subreddits_basic.csv")
+    # subreddits_df = read_from_csv("C:/Users/User/Documents/FourthYear/Project/subreddits_basic.csv")
 
     start_time = int(datetime.datetime(2021, 1, 21).timestamp())
-    subreddits_col_name = subreddits_df.columns[3]
-    subreddits_name = subreddits_df.loc[:, str(subreddits_col_name)]
+    # subreddits_col_name = subreddits_df.columns[3]
+    # subreddits_name = subreddits_df.loc[:, str(subreddits_col_name)]
 
     search_submissions_and_comments(Subreddit='PushShift', start_time=start_time,
                                     filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id', 'link_id'],
                                     Limit=10, mod_removed_boolean=False, user_removed_boolean=False)
 
-    for subreddit_name in subreddits_name:
-        search_submissions_and_comments(Subreddit=subreddit_name, start_time=start_time,
-                                        filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id', 'link_id'],
-                                        Limit=10, mod_removed_boolean=False, user_removed_boolean=True)
-
-    search_submissions_with_query(subreddit='wallstreetbets', start_time=start_time, end_time=[],
-                                  query='AMC', limit=10, mod_removed_boolean=False, user_removed_boolean=True)
-
-    search_comments_with_query(subreddit='wallstreetbets', start_time=start_time, end_time=[],
-                                  query='AMC', limit=10, mod_removed_boolean=False, user_removed_boolean=True)
+    # for subreddit_name in subreddits_name:
+    #     search_submissions_and_comments(Subreddit=subreddit_name, start_time=start_time,
+    #                                     filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id', 'link_id'],
+    #                                     Limit=10, mod_removed_boolean=False, user_removed_boolean=True)
+    #
+    # search_submissions_with_query(subreddit='wallstreetbets', start_time=start_time, end_time=[],
+    #                               query='AMC', limit=10, mod_removed_boolean=False, user_removed_boolean=True)
+    #
+    # search_comments_with_query(subreddit='wallstreetbets', start_time=start_time, end_time=[],
+    #                               query='AMC', limit=10, mod_removed_boolean=False, user_removed_boolean=True)
 
 
