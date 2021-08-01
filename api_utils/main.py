@@ -1,4 +1,5 @@
 from psaw import PushshiftAPI
+from pmaw import PushshiftAPI as PushshiftApiPmaw
 import datetime
 import requests
 import json
@@ -6,60 +7,82 @@ import pandas as pd
 import os
 import csv
 
-api = PushshiftAPI()
 
-
-def get_comments_data_from_pushshift(parent_id):
-    url = "https://api.pushshift.io/reddit/submission/comment_ids/" + str(parent_id)
-    req = requests.get(url)
-    data = json.loads(req.text, strict=False)
-    return data['data']
+api_psaw = PushshiftAPI()
+api_pmaw = PushshiftApiPmaw()
 
 
 def search_submissions_and_comments(Subreddit, start_time, filter, Limit, mod_removed_boolean, user_removed_boolean):
+
     # The `search_comments` and `search_submissions` methods return generator objects
-    sub_reader = api.search_submissions(subreddit=Subreddit, limit=Limit,
-                                        mod_removed=mod_removed_boolean,
-                                        user_removed=user_removed_boolean,
-                                        after=start_time)
-
-    submissions = [sub.d_ for sub in sub_reader]
-
+    posts = api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit,
+                                             mod_removed=mod_removed_boolean,
+                                             user_removed=user_removed_boolean)
+                                             # after=start_time)
+    submissions = [post for post in posts]
+    submission_ids_list = []
     for submission in submissions:
-        link_id = f"t3_{submission['id']}"
-        com_reader = api.search_comments(link_id=link_id)
-        comments = [comment.d_ for comment in com_reader]
-        submitted_time = datetime.datetime.fromtimestamp(submission['created_utc']).isoformat().split("T")
-        print("link_id: ", link_id, " comments: ", comments)
-        print("subreddit: ", Subreddit)
-        print("created: ", submitted_time)
-        print("id: ", submission['id'])
-        print("author: ", submission['author'])
-        print("created_utc: ", start_time)
-        print("title: ", submission['title'])
-        print("body: ", submission['selftext'])
-        print("url: ", submission['url'])
-        print("------------------------------")
+        submission_ids_list.append(submission['id'])
+        # convert Time format
+        submission['created_utc'] = datetime.datetime.fromtimestamp(submission['created_utc']).isoformat().split("T")
+
+    # The `search_comments` and `search_submissions` methods return generator objects
+    comment_ids = api_pmaw.search_submission_comment_ids(ids=submission_ids_list)
+    comment_id_list = [c_id for c_id in comment_ids]
+
+    # The `search_comments` and `search_submissions` methods return generator objects
+    comments = api_pmaw.search_comments(ids=comment_id_list)
+    comment_list = []
+    for comment in comments:
+        comment_list.append(comment)
+        # convert Time format
+        comment['created_utc'] = datetime.datetime.fromtimestamp(comment['created_utc']).isoformat().split("T")
+
+    posts_df = pd.DataFrame(submissions, index=submission_ids_list)
+    comments_df = pd.DataFrame(comment_list, index=comment_id_list)
+
+    comments_columns_to_remove = ["all_awardings", "approved_at_utc", "associated_award", "author_flair_background_color",
+               "author_flair_css_class", "author_flair_richtext", "author_flair_template_id", "author_flair_text",
+               "author_flair_text_color", "author_flair_type", "author_patreon_flair", "awarders",
+               "can_mod_post", "collapsed", "collapsed_because_crowd_control", "collapsed_reason", "comment_type",
+               "distinguished", "edited", "gildings", "is_submitter", "locked", "no_follow", "retrieved_on", "score",
+               "send_replies", "stickied", "top_awarded_type", "total_awards_received", "treatment_tags"]
+
+    posts_columns_to_remove = ["all_awardings", "author_flair_css_class", "author_flair_richtext", "author_flair_type",
+               "author_patreon_flair", "awarders", "can_mod_post", "score", "gildings", "locked", "no_follow",
+               "retrieved_on", "send_replies", "stickied", "total_awards_received","treatment_tags", "allow_live_comments",
+               "author_flair_text", "contest_mode", "domain", "is_meta", "is_crosspostable", 'is_original_content',
+               'is_reddit_media_domain', 'is_robot_indexable', 'is_self', 'is_video','link_flair_background_color',
+               'link_flair_richtext', 'link_flair_text_color', 'link_flair_type', 'media_only', 'over_18',
+               'parent_whitelist_status', 'pinned', 'pwls', 'spoiler', 'subreddit_subscribers', 'subreddit_type',
+               'thumbnail', 'upvote_ratio', 'whitelist_status', 'wls']
+
+    comments_df.drop(comments_columns_to_remove, axis=1, inplace=True)
+    posts_df.drop(posts_columns_to_remove, axis=1, inplace=True)
+
+    # convert pandas to Json
+    posts_df.to_json(r'C:\Users\User\Documents\FourthYear\Project\resources\sampleJsonPosts.json', orient="index")
+    comments_df.to_json(r'C:\Users\User\Documents\FourthYear\Project\resources\sampleJsonComments.json', orient="index")
 
 
 def search_submissions_with_query(subreddit, start_time, end_time, query, limit, mod_removed_boolean, user_removed_boolean):
     # The `search_comments` and `search_submissions` methods return generator objects
-    submissions = api.search_submissions(subreddit=subreddit,
-                                         q=query,
-                                         after=start_time,
-                                         # before=end_time,
-                                         limit=limit)
+    submissions = api_psaw.search_submissions(subreddit=subreddit,
+                                              q=query,
+                                              after=start_time,
+                                              # before=end_time,
+                                              limit=limit)
     for submission in submissions:
         print(submission)
 
 
 def search_comments_with_query(subreddit, start_time, end_time, query, limit, mod_removed_boolean, user_removed_boolean):
     # The `search_comments` and `search_submissions` methods return generator objects
-    comments = api.search_comments(subreddit=subreddit,
-                                   q=query,
-                                   after=start_time,
-                                   before=end_time,
-                                   limit=limit)
+    comments = api_psaw.search_comments(subreddit=subreddit,
+                                        q=query,
+                                        after=start_time,
+                                        before=end_time,
+                                        limit=limit)
     for comment in comments:
         print(comment)
 
@@ -67,8 +90,8 @@ def search_comments_with_query(subreddit, start_time, end_time, query, limit, mo
 def get_submissions_data(subreddit, limit, mod_removed_boolean, user_removed_boolean):
     # The `search_comments` and `search_submissions` methods return generator objects
     start_time = int(datetime.datetime(2021, 7, 21).timestamp())
-    submissions = api.search_submissions(subreddit=subreddit,
-                                         limit=limit)
+    submissions = api_psaw.search_submissions(subreddit=subreddit,
+                                              limit=limit)
 
     # submissions = api.search_comments(subreddit="wallstreetbets" , limit=50)
     '''mod_removed=mod_removed_boolean,
@@ -107,7 +130,6 @@ def write_to_csv(headers,data):
     except:
         print("something wrong")
 
-
 def read_from_csv(path):
     df = pd.read_csv(path)
     return df
@@ -115,16 +137,18 @@ def read_from_csv(path):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    # print('precessors: ', os.cpu_count())
-    subreddits_df = read_from_csv("C:/Users/User/Documents/Fourth Year/Project/subreddits_basic.csv")
+
+
+    subreddits_df = read_from_csv("C:/Users/User/Documents/FourthYear/Project/subreddits_basic.csv")
 
     start_time = int(datetime.datetime(2021, 1, 21).timestamp())
     subreddits_col_name = subreddits_df.columns[3]
     subreddits_name = subreddits_df.loc[:, str(subreddits_col_name)]
 
-    search_submissions_and_comments(Subreddit=subreddits_col_name, start_time=start_time,
+    search_submissions_and_comments(Subreddit='PushShift', start_time=start_time,
                                     filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id', 'link_id'],
-                                    Limit=10, mod_removed_boolean=False, user_removed_boolean=True)
+                                    Limit=10, mod_removed_boolean=False, user_removed_boolean=False)
+
     for subreddit_name in subreddits_name:
         search_submissions_and_comments(Subreddit=subreddit_name, start_time=start_time,
                                         filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id', 'link_id'],
@@ -133,14 +157,7 @@ if __name__ == '__main__':
     search_submissions_with_query(subreddit='wallstreetbets', start_time=start_time, end_time=[],
                                   query='AMC', limit=10, mod_removed_boolean=False, user_removed_boolean=True)
 
+    search_comments_with_query(subreddit='wallstreetbets', start_time=start_time, end_time=[],
+                                  query='AMC', limit=10, mod_removed_boolean=False, user_removed_boolean=True)
 
-    # start_time = int(datetime.datetime(2021, 7, 21).timestamp())
-    # submissions_ids = search_submissions(subreddit='wallstreetbets', start_time=start_time,
-    #                      filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id', 'link_id'],
-    #                      limit=10, mod_removed_boolean=False, user_removed_boolean=True)
-    # for submission_id in submissions_ids:
-    #     print("submission_id: ", get_comments_data_from_pushshift(str(submission_id)))
-    # submissions_ids = get_submissions_data(subreddit='wallstreetbets',limit=50, mod_removed_boolean=False, user_removed_boolean=True)
-    # for submission_id in submissions_ids:
-    #     print("submission_id: ", get_comments_data_from_pushshift(str(submission_id)))
-    # print(get_comments_data_from_pushshift("oq38bl"))
+
