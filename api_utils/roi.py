@@ -1,6 +1,9 @@
 import datetime
 import pymongo
 import re
+import pandas as pd
+import seaborn as sns
+from numpy import sort
 from textblob import TextBlob
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -40,29 +43,22 @@ class RedditClient(object):
         posts = mydb["deletedData"]
         return posts
 
-    def draw_sentiment_time(self,posts):
-        dates = []
-        posts_id = []
+    def draw_sentiment_time(self, posts):
+        data = []
         for x in posts.find({}):
-            #ext_post = x['selftext']
-            #print(x['selftext'])
-            dates.append(x['created_utc'][0])
-            posts_id.append(str(x['id']))
-            # sentiment = api.get_post_sentiment(post)
-            # print(sentiment)
-            #api.sentiment_time(dates)
+            temp = self.get_post_sentiment(x['selftext'])
+            year = int(datetime.datetime.strptime(x['created_utc'][0], "%Y-%m-%d").date().year)
+            data.append([year, temp])
+        # x_values = [str(datetime.datetime.strptime(d, "%Y-%m-%d").date().month) for d in dates]
 
-        # convert the dates to datetime
-        x_values = [datetime.datetime.strptime(d, "%Y-%m-%d").date() for d in dates]
-        plt.plot(x_values, posts_id)
+        hist = pd.DataFrame(data, columns=['Year', 'Sentiment'])
+        with sns.axes_style('white'):
+            g = sns.factorplot("Year", data=hist, aspect=1.7, kind='count', hue='Sentiment', order=range(2017, 2023))
+
         return plt.show()
+
 
 if __name__ == '__main__':
     api = RedditClient()
     posts = api.get_posts_from_mongodb()
     api.draw_sentiment_time(posts)
-
-
-
-
-
