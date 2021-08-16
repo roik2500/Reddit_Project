@@ -6,6 +6,8 @@ import json
 import pandas as pd
 import os
 import csv
+import praw
+
 
 api_psaw = PushshiftAPI()
 api_pmaw = PushshiftApiPmaw()
@@ -34,13 +36,22 @@ posts_columns_to_remove = ["all_awardings", "author_flair_css_class", "author_fl
                            'subreddit_type',
                            'thumbnail', 'upvote_ratio', 'whitelist_status', 'wls']
 
+def get_submission(Subreddit, start_time, filter, Limit, mod_removed_boolean, user_removed_boolean):
+    posts = api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit,
+                                        mod_removed=mod_removed_boolean,
+                                        user_removed=user_removed_boolean, after=start_time, can_gild=True)
+
+    submissions = [post for post in posts]
+
+    return submissions
+
+
 
 def search_submissions_and_comments(Subreddit, start_time, filter, Limit, mod_removed_boolean, user_removed_boolean):
     # The `search_comments` and `search_submissions` methods return generator objects
     posts = api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit,
                                         mod_removed=mod_removed_boolean,
-                                        user_removed=user_removed_boolean)
-    # after=start_time)
+                                        user_removed=user_removed_boolean, after=start_time, can_gild=True)
     submissions = [post for post in posts]
     submission_ids_list = []
 
@@ -51,29 +62,29 @@ def search_submissions_and_comments(Subreddit, start_time, filter, Limit, mod_re
         submission['comments'] = {}
 
     # The `search_comments` and `search_submissions` methods return generator objects
-    comment_ids = api_pmaw.search_submission_comment_ids(ids=submission_ids_list)
-    comment_id_list = [c_id for c_id in comment_ids]
-
-    # The `search_comments` and `search_submissions` methods return generator objects
-    comments = api_pmaw.search_comments(ids=comment_id_list)
-    comment_list = []
-    for comment in comments:
-        comment_list.append(comment)
-        convert_time_format(comment)
-
-    comments_df = pd.DataFrame(comment_list, index=comment_id_list)
-    comments_df.drop(comments_columns_to_remove, axis=1, inplace=True)
-
-    for index, row_comment in comments_df.iterrows():
-        match_comment_to_post(row_comment, submission_ids_list, submissions)
+    # comment_ids = api_pmaw.search_submission_comment_ids(ids=submission_ids_list)
+    # comment_id_list = [c_id for c_id in comment_ids]
+    #
+    # # The `search_comments` and `search_submissions` methods return generator objects
+    # comments = api_pmaw.search_comments(ids=comment_id_list)
+    # comment_list = []
+    # for comment in comments:
+    #     comment_list.append(comment)
+    #     convert_time_format(comment)
+    #
+    # comments_df = pd.DataFrame(comment_list, index=comment_id_list)
+    # comments_df.drop(comments_columns_to_remove, axis=1, inplace=True)
+    #
+    # for index, row_comment in comments_df.iterrows():
+    #     match_comment_to_post(row_comment, submission_ids_list, submissions)
 
     posts_df = pd.DataFrame(submissions, index=submission_ids_list)
-    posts_df.drop(posts_columns_to_remove, axis=1, inplace=True)
+    # posts_df.drop(posts_columns_to_remove, axis=1, inplace=True)
     print(posts_df)
     # convert pandas Data frame to Json
-   # path = r'C:\Users\roik2\PycharmProjects\Reddit_Project'
-    #posts_df.to_json(path + '\sampleJsonPosts.json', orient="index")
-    #comments_df.to_json(path + '\sampleJsonComments.json', orient="index")
+    path = r'/'
+    posts_df.to_json(path + '\sampleJsonPosts.json', orient="index")
+    # comments_df.to_json(path + '\sampleJsonComments.json', orient="index")
 
 
 def convert_time_format(comment_or_post):
@@ -134,26 +145,26 @@ def read_from_csv(path):
 
 
 # Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    # df = pd.read_json(r'C:\Users\roik2\PycharmProjects\Reddit_Project\sampleJsonPosts.json')
-
-    subreddits_df = read_from_csv(r"C:\Users\roik2\PycharmProjects\Reddit_Project\subreddits_basic.csv")
-
-    start_time = int(datetime.datetime(2021, 1, 21).timestamp())
-    subreddits_col_name = subreddits_df.columns[3]
-    subreddits_name = subreddits_df.loc[:, str(subreddits_col_name)]
-
-    search_submissions_and_comments(Subreddit='PushShift', start_time=start_time,
-                                    filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id', 'link_id'],
-                                    Limit=10, mod_removed_boolean=True, user_removed_boolean=True)
-
-    # for subreddit_name in subreddits_name:
-    #     search_submissions_and_comments(Subreddit=subreddit_name, start_time=start_time,
-    #                                     filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id', 'link_id'],
-    #                                     Limit=10, mod_removed_boolean=False, user_removed_boolean=True)
-    #
-    # search_submissions_with_query(subreddit='wallstreetbets', start_time=start_time, end_time=[],
-    #                               query='AMC', limit=10, mod_removed_boolean=False, user_removed_boolean=True)
-    #
-    # search_comments_with_query(subreddit='wallstreetbets', start_time=start_time, end_time=[],
-    #                            query='AMC', limit=10, mod_removed_boolean=False, user_removed_boolean=True)
+# if __name__ == '__main__':
+#     # df = pd.read_json(r'C:\Users\roik2\PycharmProjects\Reddit_Project\sampleJsonPosts.json')
+#
+#     subreddits_df = read_from_csv(r"C:\Users\shimon\Downloads\subreddits_basic.csv")
+#
+#     start_time = int(datetime.datetime(2019, 1, 1).timestamp())
+#     subreddits_col_name = subreddits_df.columns[3]
+#     subreddits_name = subreddits_df.loc[:, str(subreddits_col_name)]
+#
+#     search_submissions_and_comments(Subreddit='mexico', start_time=start_time,
+#                                     filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id', 'link_id'],
+#                                     Limit=100000, mod_removed_boolean=True, user_removed_boolean=True)
+#
+#     # for subreddit_name in subreddits_name:
+#     #     search_submissions_and_comments(Subreddit=subreddit_name, start_time=start_time,
+#     #                                     filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id', 'link_id'],
+#     #                                     Limit=10, mod_removed_boolean=False, user_removed_boolean=True)
+#     #
+#     # search_submissions_with_query(subreddit='wallstreetbets', start_time=start_time, end_time=[],
+#     #                               query='AMC', limit=10, mod_removed_boolean=False, user_removed_boolean=True)
+#     #
+#     # search_comments_with_query(subreddit='wallstreetbets', start_time=start_time, end_time=[],
+#     #                            query='AMC', limit=10, mod_removed_boolean=False, user_removed_boolean=True)

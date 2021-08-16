@@ -58,7 +58,7 @@ class RedditClient(object):
         return plt.show()
 
 
-if __name__ == '__main__':
-    api = RedditClient()
-    posts = api.get_posts_from_mongodb()
-    api.draw_sentiment_time(posts)
+# if __name__ == '__main__':
+#     api = RedditClient()
+#     posts = api.get_posts_from_mongodb()
+#     api.draw_sentiment_time(posts)
