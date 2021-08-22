@@ -13,11 +13,39 @@ import matplotlib.dates as mdates
 import nltk
 
 
+def get_posts_text(posts):
+    return posts.find({'title': {"$exists": True}})
+
+
+def get_post_from_csv():
+    df = pd.read_csv('./data/removed.csv')
+    return df
+
+
+def get_posts_from_mongodb():
+    '''
+    This function is return the posts from mongoDB
+    :return:
+    '''
+    myclient = pymongo.MongoClient("mongodb+srv://roi:1234@redditdata.aav2q.mongodb.net/")
+    mydb = myclient["reddit"]
+    posts = mydb["politics_sample"]
+    return posts
+
+
+def clean_tweet(tweet):
+    '''
+        Utility function to clean tweet text by removing links, special characters
+        using simple regex statements.
+        '''
+    return ' '.join(re.sub("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)", " ", tweet).split())
+
+
 class RedditClient(object):
 
     def get_post_sentiment(self, tweet):
         # create TextBlob object of passed tweet text
-        analysis = TextBlob(self.clean_tweet(tweet))
+        analysis = TextBlob(clean_tweet(tweet))
         # analysis.detect_language(to="en")
         # print("Sentiment:")
         # print("The polarity is: {}".format(analysis.sentiment.polarity))
@@ -34,42 +62,18 @@ class RedditClient(object):
             return 'negative'
             # return -1
 
-    def clean_tweet(self, tweet):
-        '''
-            Utility function to clean tweet text by removing links, special characters
-            using simple regex statements.
-            '''
-        return ' '.join(re.sub("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)", " ", tweet).split())
-
-    def get_posts_from_mongodb(self):
-        '''
-        This function is return the posts from mongoDB
-        :return:
-        '''
-        myclient = pymongo.MongoClient("mongodb+srv://roi:1234@redditdata.aav2q.mongodb.net/")
-        mydb = myclient["reddit"]
-        posts = mydb["politics_sample"]
-        return posts
-
-    def get_post_from_csv(self):
-        df = pd.read_csv('./data/removed.csv')
-        return df
-
-    # def get_avg_per_year(self,posts):
-
-    def draw_sentiment_time(self, posts):
-        data = []
+    # return all the posts text that include the parametar "title"
+    def draw_sentiment_time(self, posts_text):
+        # data = []
         text_per_month = {}
         positive, negative, neutral = 0, 0, 0
         afn = Afinn()
 
-        # choosing all the posts that include the parametar "title"
-        p = posts.find({'title': {"$exists": True}})
-
         # The total amount of the post by one year
-        total = 20000
+        total = 0
 
-        for x in tqdm(p):
+        for x in tqdm(posts_text):
+            total += 1
             temp = self.get_post_sentiment(x['title'])
             # update the dict in order to know how many posts are positive,neutral or negative
             if temp == 'positive':
@@ -86,7 +90,7 @@ class RedditClient(object):
                 text_per_month[month] = [x['title']]
             else:
                 text_per_month[month].append(x['title'])
-            data.append([month, temp])
+            # data.append([month, temp])
 
         # calculate the % of positive, negative and neutral
         positive = (positive / total) * 100
@@ -106,7 +110,6 @@ class RedditClient(object):
         plt.ylabel("Sentiment (polarity)")
         return plt.show()
 
-
         # # for option count
         # hist = pd.DataFrame(data, columns=['month', 'Sentiment'])
         # with sns.axes_style('white'):
@@ -119,5 +122,6 @@ if __name__ == '__main__':
     api = RedditClient()
     # post_csv = api.get_post_from_csv()
     # api.draw_sentiment_time(post_csv,'c')
-    posts = api.get_posts_from_mongodb()
-    api.draw_sentiment_time(posts)
+    posts = get_posts_from_mongodb()
+    text = get_posts_text(posts)
+    api.draw_sentiment_time(text)
