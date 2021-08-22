@@ -12,6 +12,8 @@ import praw
 api_psaw = PushshiftAPI()
 api_pmaw = PushshiftApiPmaw()
 
+
+
 comments_columns_to_remove = ["all_awardings", "approved_at_utc", "associated_award", "author_flair_background_color",
                               "author_flair_css_class", "author_flair_richtext", "author_flair_template_id",
                               "author_flair_text",
