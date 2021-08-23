@@ -25,7 +25,7 @@ class Sentiment:
 
     def get_post_sentiment(self, tweet):
         # create TextBlob object of passed tweet text
-        analysis = TextBlob(clean_tweet(tweet))
+        analysis = TextBlob(self.clean_tweet(tweet))
         # analysis.detect_language(to="en")
         # print("Sentiment:")
         # print("The polarity is: {}".format(analysis.sentiment.polarity))
@@ -104,5 +104,5 @@ if __name__ == '__main__':
     # post_csv = api.get_post_from_csv()
     # api.draw_sentiment_time(post_csv,'c')
     posts = con.get_posts_from_mongodb()
-    text = con.get_posts_text()
+    text = con.get_posts_text(posts)
     api.draw_sentiment_time(text)
