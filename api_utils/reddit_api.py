@@ -31,20 +31,21 @@
 import praw
 import pandas as pd
 
-reddit = praw.Reddit(
-    client_id="FVJ_dCHfJWeGtkI4ekc9ow",
-    client_secret="lSslynhzT_oHLnKvxjaerTZ3jvbCrQ",
-    user_agent="MyBot/0.0.1",
-    username='ObjectiveExisting282 ',
-    password='sH231294',
-)
 
-submission_reddit = reddit.submission(id=["hgpif7","hgpamk","hgp8pd"])
-print(submission_reddit)
+class reddit_api:
+    def __init__(self, reddit):
+        self.reddit = praw.Reddit(
+            client_id="FVJ_dCHfJWeGtkI4ekc9ow",
+            client_secret="lSslynhzT_oHLnKvxjaerTZ3jvbCrQ",
+            user_agent="MyBot/0.0.1",
+            username='ObjectiveExisting282 ',
+            password='sH231294',
+        )
 
-
-
-
+if __name__ == '__main__':
+    reddit = reddit_api()
+    submission_reddit = reddit.reddit.submission(id=["hgpif7", "hgpamk", "hgp8pd"])
+    print(submission_reddit)
 
 # path = r'C:\Users\shimon\Visual Studio Code Projects\Reddit_Project'
 # df = pd.read_json(path)

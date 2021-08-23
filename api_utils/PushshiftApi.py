@@ -9,10 +9,12 @@ import csv
 import praw
 from tqdm import tqdm
 
-api_psaw = PushshiftAPI()
-api_pmaw = PushshiftApiPmaw()
 
-comments_columns_to_remove = ["all_awardings", "approved_at_utc", "associated_award", "author_flair_background_color",
+class PushshiftApi:
+    def __init__(self,api_psaw,api_pmaw,comments_columns_to_remove,posts_columns_to_remove):
+        self.api_psaw = PushshiftApi()
+        self.api_pmaw = PushshiftApiPmaw()
+        self.comments_columns_to_remove = ["all_awardings", "approved_at_utc", "associated_award", "author_flair_background_color",
                               "author_flair_css_class", "author_flair_richtext", "author_flair_template_id",
                               "author_flair_text",
                               "author_flair_text_color", "author_flair_type", "author_patreon_flair", "awarders",
@@ -21,8 +23,7 @@ comments_columns_to_remove = ["all_awardings", "approved_at_utc", "associated_aw
                               "distinguished", "edited", "gildings", "is_submitter", "locked", "no_follow",
                               "retrieved_on", "score",
                               "send_replies", "stickied", "top_awarded_type", "total_awards_received", "treatment_tags"]
-
-posts_columns_to_remove = ["all_awardings", "author_flair_css_class", "author_flair_richtext", "author_flair_type",
+        self.posts_columns_to_remove = ["all_awardings", "author_flair_css_class", "author_flair_richtext", "author_flair_type",
                            "author_patreon_flair", "awarders", "can_mod_post", "score", "gildings", "locked",
                            "no_follow",
                            "retrieved_on", "send_replies", "stickied", "total_awards_received", "treatment_tags",
@@ -37,8 +38,11 @@ posts_columns_to_remove = ["all_awardings", "author_flair_css_class", "author_fl
                            'thumbnail', 'upvote_ratio', 'whitelist_status', 'wls']
 
 
-def get_submission(Subreddit, start_time, filter, Limit, mod_removed_boolean, user_removed_boolean):
-    posts = api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit, filter=filter,
+
+
+
+def get_submission(self,Subreddit, start_time, filter, Limit, mod_removed_boolean, user_removed_boolean):
+    posts = self.api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit, filter=filter,
                                         mod_removed=mod_removed_boolean,
                                         user_removed=user_removed_boolean, after=start_time, can_gild=True)
 
@@ -47,9 +51,9 @@ def get_submission(Subreddit, start_time, filter, Limit, mod_removed_boolean, us
     return submissions
 
 
-def search_submissions_and_comments(Subreddit, start_time, filter, Limit, mod_removed_boolean, user_removed_boolean):
+def search_submissions_and_comments(self,Subreddit, start_time, filter, Limit, mod_removed_boolean, user_removed_boolean):
     # The `search_comments` and `search_submissions` methods return generator objects
-    posts = api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit, filter=filter,
+    posts = self.api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit, filter=filter,
                                         mod_removed=mod_removed_boolean,
                                         user_removed=user_removed_boolean, after=start_time, can_gild=True)
     submissions = [post for post in posts]
@@ -79,7 +83,7 @@ def search_submissions_and_comments(Subreddit, start_time, filter, Limit, mod_re
     #     match_comment_to_post(row_comment, submission_ids_list, submissions)
 
     posts_df = pd.DataFrame(submissions, index=submission_ids_list)
-    # posts_df.drop(posts_columns_to_remove, axis=1, inplace=True)
+    # posts_df.drop(self.posts_columns_to_remove, axis=1, inplace=True)
     # print(posts_df)
     # convert pandas Data frame to Json
     path = r'/'
@@ -88,7 +92,7 @@ def search_submissions_and_comments(Subreddit, start_time, filter, Limit, mod_re
     # comments_df.to_json(path + '\sampleJsonComments.json', orient="index")
 
 
-def convert_time_format(comment_or_post):
+def convert_time_format(self,comment_or_post):
     comment_or_post['created_utc'] = datetime.datetime.fromtimestamp(comment_or_post['created_utc']).isoformat().split(
         "T")
     comment_or_post['retrieved_on'] = datetime.datetime.fromtimestamp(
@@ -96,21 +100,21 @@ def convert_time_format(comment_or_post):
         "T")
 
 
-def match_comment_to_post(comment, submission_ids_list, submissions):
+def match_comment_to_post(self,comment, submission_ids_list, submissions):
     id = comment['link_id'].replace('t3_', '')
     index_of_post_in_list = submission_ids_list.index(id)
 
     # find if there is a nested comment
-    if (submissions[index_of_post_in_list]['comments'].get(comment['id']) == None):
+    if submissions[index_of_post_in_list]['comments'].get(comment['id']) is None:
         submissions[index_of_post_in_list]['comments'].update({comment['id']: comment})
     else:
         submissions[index_of_post_in_list]['comments'][comment[id]].update({comment['id']: comment})
 
 
-def search_submissions_with_query(subreddit, start_time, end_time, query, limit, mod_removed_boolean,
+def search_submissions_with_query(self,subreddit, start_time, end_time, query, limit, mod_removed_boolean,
                                   user_removed_boolean):
     # The `search_comments` and `search_submissions` methods return generator objects
-    submissions = api_psaw.search_submissions(subreddit=subreddit,
+    submissions = self.api_psaw.search_submissions(subreddit=subreddit,
                                               q=query,
                                               after=start_time,
                                               # before=end_time,
@@ -119,10 +123,10 @@ def search_submissions_with_query(subreddit, start_time, end_time, query, limit,
         print(submission)
 
 
-def search_comments_with_query(subreddit, start_time, end_time, query, limit, mod_removed_boolean,
+def search_comments_with_query(self,subreddit, start_time, end_time, query, limit, mod_removed_boolean,
                                user_removed_boolean):
     # The `search_comments` and `search_submissions` methods return generator objects
-    comments = api_psaw.search_comments(subreddit=subreddit,
+    comments = self.api_psaw.search_comments(subreddit=subreddit,
                                         q=query,
                                         after=start_time,
                                         before=end_time,
@@ -131,7 +135,7 @@ def search_comments_with_query(subreddit, start_time, end_time, query, limit, mo
         print(comment)
 
 
-def write_to_csv(headers, data):
+def write_to_csv(self,headers, data):
     # change the path to the path in your computer
     path = 'C:/Users/roik2/PycharmProjects/pythonProject1/data.csv'
     try:

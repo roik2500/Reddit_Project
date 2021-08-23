@@ -12,36 +12,16 @@ from tqdm import tqdm
 import matplotlib.dates as mdates
 import nltk
 
-
-def get_posts_text(posts):
-    return posts.find({'title': {"$exists": True}})
+from api_utils.Con_DB import Con_DB
 
 
-def get_post_from_csv():
-    df = pd.read_csv('./data/removed.csv')
-    return df
-
-
-def get_posts_from_mongodb():
-    '''
-    This function is return the posts from mongoDB
-    :return:
-    '''
-    myclient = pymongo.MongoClient("mongodb+srv://roi:1234@redditdata.aav2q.mongodb.net/")
-    mydb = myclient["reddit"]
-    posts = mydb["politics_sample"]
-    return posts
-
-
-def clean_tweet(tweet):
-    '''
-        Utility function to clean tweet text by removing links, special characters
-        using simple regex statements.
+class Sentiment:
+    def clean_tweet(self,tweet):
         '''
-    return ' '.join(re.sub("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)", " ", tweet).split())
-
-
-class RedditClient(object):
+            Utility function to clean tweet text by removing links, special characters
+            using simple regex statements.
+            '''
+        return ' '.join(re.sub("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)", " ", tweet).split())
 
     def get_post_sentiment(self, tweet):
         # create TextBlob object of passed tweet text
@@ -119,9 +99,10 @@ class RedditClient(object):
 
 
 if __name__ == '__main__':
-    api = RedditClient()
+    api = Sentiment()
+    con = Con_DB()
     # post_csv = api.get_post_from_csv()
     # api.draw_sentiment_time(post_csv,'c')
-    posts = get_posts_from_mongodb()
-    text = get_posts_text(posts)
+    posts = con.get_posts_from_mongodb()
+    text = con.get_posts_text()
     api.draw_sentiment_time(text)
