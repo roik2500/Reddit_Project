@@ -1,3 +1,4 @@
+import pandas as pd
 import pymongo
 import spacy
 from gensim import corpora
@@ -69,21 +70,22 @@ if __name__ == "__main__":
         blob = TextBlob(topic)
         print(topic,": ",blob.sentiment.polarity)
 
-    # Visualize the topics
+    # # Visualize the topics
     # visualisation = pyLDAvis.gensim_models.prepare(loaded_lda_model, loaded_corpus, loaded_dict)
     # pyLDAvis.save_html(visualisation, 'LDA_Visualization.html')
 
     # text_data = []
-    # myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
-    # mydb = myclient["reddit"]
-    # mycol = mydb["deletedData"]
-    #
-    # for x in mycol.find({}, {"title": 1, "selftext": 1, "subreddit": 1}):
-    #     if x["subreddit"] == "The_Donald":
-    #         tokens = prepare_text_for_lda(x["title"])
-    #         tokens.extend(prepare_text_for_lda(x["selftext"]))
-    #         print(tokens)
-    #         text_data.append(tokens)
+    # # myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
+    # # mydb = myclient["reddit"]
+    # # mycol = mydb["deletedData"]
+    # # data = mycol.find({}, {"title": 1, "selftext": 1, "subreddit": 1})
+    # data = pd.read_csv("../data_10000_1.csv")
+    # data = data[data["is_crosspostable"] == False]
+    # for ind, x in data.iterrows():
+    #     tokens = prepare_text_for_lda(x["title"])
+    #     # tokens.extend(prepare_text_for_lda(x["selftext"]))
+    #     print(tokens)
+    #     text_data.append(tokens)
     #
     # dictionary = corpora.Dictionary(text_data)
     # corpus = [dictionary.doc2bow(text) for text in text_data]
