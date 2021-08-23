@@ -2,8 +2,8 @@ import concurrent.futures
 import datetime
 import multiprocessing
 
-import PushshiftAPI
-import reddit_api
+from PushshiftApi import PushshiftApi
+from reddit_api import reddit_api
 import pandas as pd
 from tqdm import tqdm
 
@@ -11,8 +11,8 @@ from tqdm import tqdm
 def extract_reddit_data_parallel(sub):
 
     sub_id = sub["id"]
-    PushshiftAPI.convert_time_format(sub)
-    post_from_reddit = reddit_api.reddit.submission(sub_id)
+    pushift.convert_time_format(sub)
+    post_from_reddit = reddit.reddit.submission(sub_id)
     post_from_reddit = [post_from_reddit.permalink,
                         post_from_reddit.id,
                         post_from_reddit.is_crosspostable,
@@ -26,7 +26,8 @@ def extract_reddit_data_parallel(sub):
                         sub["subreddit"],
                         sub["selftext"],
                         sub["created_utc"],
-                        sub["retrieved_on"]]
+                        sub["retrieved_on"],
+                        post_from_reddit.comments]
     return post_from_reddit
 
     # final_lst.append(post_from_reddit)
@@ -55,9 +56,13 @@ def extract_reddit_data_parallel(sub):
 if __name__ == '__main__':
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        limit = 1000000
-        start_time = int(datetime.datetime(2020, 1, 1).timestamp())
-        submissions_list = PushshiftAPI.get_submission(Subreddit='politics', start_time=start_time,
+        limit = 10000
+        start_time = int(datetime.datetime(2020, 9, 1).timestamp())
+        end_time = int(datetime.datetime(2020, 9, 15).timestamp())
+        sub_reddit = 'politics'
+        pushift = PushshiftApi()
+        reddit = reddit_api()
+        submissions_list = pushift.get_submission(Subreddit=sub_reddit, start_time=start_time,end_time=end_time,
                                                        filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id',
                                                                'link_id', 'created_utc', 'retrieved_on', 'can_gild'],
                                                        Limit=limit, mod_removed_boolean=True,
@@ -65,7 +70,7 @@ if __name__ == '__main__':
         res = []
         for submission in submissions_list:
             res.append((executor.submit(extract_reddit_data_parallel, submission)))
-            if len(res) % limit == 10000:
+            if len(res) % limit == 5000:
                 # writer.writerows(lst)
                 final_lst = []
                 for r in tqdm(res):
@@ -83,6 +88,7 @@ if __name__ == '__main__':
                                                            'subreddit',
                                                            'selftext_pushift',
                                                            'created_utc',
-                                                           'retrieved_on'])
-                df.to_csv("data_{}.csv".format(len(res)))
+                                                           'retrieved_on',
+                                                           'comments'])
+                df.to_json("../data/data{}_{}_{}.csv".format(len(res),sub_reddit, start_time))
                 res = []

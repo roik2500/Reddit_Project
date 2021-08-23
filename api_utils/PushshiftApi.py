@@ -1,4 +1,3 @@
-from psaw import PushshiftAPI
 from pmaw import PushshiftAPI as PushshiftApiPmaw
 import datetime
 import requests
@@ -7,12 +6,13 @@ import pandas as pd
 import os
 import csv
 import praw
+from psaw import PushshiftAPI
 from tqdm import tqdm
 
 
 class PushshiftApi:
-    def __init__(self, api_psaw, api_pmaw, comments_columns_to_remove, posts_columns_to_remove):
-        self.api_psaw = PushshiftApi()
+    def __init__(self):
+        self.api_psaw = PushshiftAPI()
         self.api_pmaw = PushshiftApiPmaw()
         self.comments_columns_to_remove = ["all_awardings", "approved_at_utc", "associated_award",
                                            "author_flair_background_color",
@@ -46,21 +46,22 @@ class PushshiftApi:
                                         'subreddit_type',
                                         'thumbnail', 'upvote_ratio', 'whitelist_status', 'wls']
 
-    def get_submission(self, Subreddit, start_time, filter, Limit, mod_removed_boolean, user_removed_boolean):
+    def get_submission(self, Subreddit, start_time, end_time, filter, Limit, mod_removed_boolean, user_removed_boolean):
         posts = self.api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit, filter=filter,
                                                  mod_removed=mod_removed_boolean,
-                                                 user_removed=user_removed_boolean, after=start_time, can_gild=True)
+                                                 user_removed=user_removed_boolean, after=start_time, before=end_time, can_gild=True)
 
         submissions = [post for post in posts]
 
         return submissions
 
-    def search_submissions_and_comments(self, Subreddit, start_time, filter, Limit, mod_removed_boolean,
+    def search_submissions_and_comments(self, Subreddit, start_time, end_time, filter, Limit, mod_removed_boolean,
                                         user_removed_boolean):
         # The `search_comments` and `search_submissions` methods return generator objects
         posts = self.api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit, filter=filter,
                                                  mod_removed=mod_removed_boolean,
-                                                 user_removed=user_removed_boolean, after=start_time, can_gild=True)
+                                                 user_removed=user_removed_boolean, after=start_time, before=end_time,
+                                                 can_gild=True)
         submissions = [post for post in posts]
         submission_ids_list = []
 
@@ -118,10 +119,10 @@ class PushshiftApi:
                                       user_removed_boolean):
         # The `search_comments` and `search_submissions` methods return generator objects
         submissions = self.api_psaw.api_pmaw.search_submissions(subreddit=subreddit,
-                                                       q=query,
-                                                       after=start_time,
-                                                       # before=end_time,
-                                                       limit=limit)
+                                                                q=query,
+                                                                after=start_time,
+                                                                # before=end_time,
+                                                                limit=limit)
         for submission in submissions:
             print(submission)
 
@@ -129,10 +130,10 @@ class PushshiftApi:
                                    user_removed_boolean):
         # The `search_comments` and `search_submissions` methods return generator objects
         comments = self.api_psaw.api_pmaw.search_comments(subreddit=subreddit,
-                                                 q=query,
-                                                 after=start_time,
-                                                 before=end_time,
-                                                 limit=limit)
+                                                          q=query,
+                                                          after=start_time,
+                                                          before=end_time,
+                                                          limit=limit)
         for comment in comments:
             print(comment)
 

@@ -13,6 +13,7 @@ import pickle
 import pyLDAvis.gensim_models
 import pyLDAvis
 from textblob import TextBlob
+from tqdm import tqdm
 
 spacy.load('en_core_web_sm')
 parser = English()
@@ -56,85 +57,119 @@ def prepare_text_for_lda(text):
     return tokens
 
 
+def topic_analysis(source_type, source_name):
+    text_data = []
+    limit = 90
+    start = 2
+    step = 6
+    coherence_values = []
+    perplexity_values = []
+    best_num_of_topics = 0
+    bst_coh = 0
+    best_model = 0
+    data = data_access(source_name, source_type)
+    for ind, x in tqdm(data.iterrows()):
+        tokens = prepare_text_for_lda(x["title"])
+        if not pd.isnull(x["selftext"]) and not x["selftext"].__contains__("[removed]") and x[
+            "selftext"] != "[deleted]":
+            tokens.extend(prepare_text_for_lda(x["selftext"]))
+        text_data.append(tokens)
+    dictionary = corpora.Dictionary(text_data)
+    corpus = [dictionary.doc2bow(text) for text in text_data]
+    pickle.dump(corpus, open('../outputs/corpus.pkl', 'wb'))
+    dictionary.save('../outputs/dictionary.gensim')
+    for num_of_topic in tqdm(range(start, limit, step)):
+        # print(num_of_topic)
+        ldamodel = gensim.models.ldamodel.LdaModel(corpus, num_topics=num_of_topic, id2word=dictionary, passes=15)
+        perplexity_value = ldamodel.log_perplexity(corpus)
+        # print('\nPerplexity: ', perplexity_value)  # a measure of how good the model is. lower the better.
+        perplexity_values.append(perplexity_value)
+        # Compute Coherence Score
+        coherence_model_lda = CoherenceModel(model=ldamodel, texts=text_data, dictionary=dictionary, coherence='c_v')
+        coherence_lda = coherence_model_lda.get_coherence()
+        if coherence_lda > bst_coh:
+            bst_coh = coherence_lda
+            best_num_of_topics = num_of_topic
+            best_model = ldamodel
+        coherence_values.append(coherence_lda)
+        # print('\nCoherence Score: ', coherence_lda)
+    best_model.save('../outputs/model{}.gensim'.format(best_num_of_topics))
+    extract_plots(coherence_values, limit, perplexity_values, start, step)
+    dominant_topics(ldamodel=best_model, corpus=corpus, texts=data)
+    return best_model, corpus, dictionary
+
+
+def data_access(source_name_, source_type_):
+    if source_type_ == "mongo":
+        myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
+        mydb = myclient["reddit"]
+        mycol = mydb[source_name_]
+        data_ = mycol.find({}, {"title": 1, "selftext": 1, "subreddit": 1})
+    elif source_type_ == "csv":
+        data_ = pd.read_csv("../data/{}.csv".format(source_name_))
+        data_ = data_[data_["is_crosspostable"] == False]
+    return data_
+
+
+def dominant_topics(ldamodel, corpus, texts):
+    sent_topics_df = pd.DataFrame()
+    for i, row in enumerate(ldamodel[corpus]):
+        row = sorted(row, key=lambda x: (x[1]), reverse=True)
+        for j, (topic_num, prop_topic) in enumerate(row):
+            if j == 0:  # => dominant topic
+                wp = ldamodel.show_topic(topic_num)
+                topic_keywords = ", ".join([word for word, prop in wp])
+                sent_topics_df = sent_topics_df.append(
+                    pd.Series([int(topic_num), round(prop_topic, 4), topic_keywords]), ignore_index=True)
+            else:
+                break
+    sent_topics_df.columns = ['Dominant_Topic', 'Perc_Contribution', 'Topic_Keywords']
+    contents = pd.Series(texts.id)
+    sent_topics_df = pd.concat([sent_topics_df, contents], axis=1)
+    sent_topics_df.columns = [
+        'Dominant_Topic', 'Topic_Perc_Contrib', 'Keywords', 'post_id'
+    ]
+    sent_topics_df = sent_topics_df.reset_index()
+    sent_topics_df.to_csv("../outputs/document_topic_table.csv")
+    print(sent_topics_df.head(15))
+
+
+def extract_plots(coherence_values, limit, perplexity_values, start, step):
+    x = range(start, limit, step)
+    fig, axs = plt.subplots(2)
+    axs[0].plot(x, coherence_values)
+    plt.xlabel("Num Topics")
+    plt.ylabel("Coherence score")
+    plt.legend(("coherence_values"), loc='best')
+    axs[1].plot(x, perplexity_values)
+    plt.xlabel("Num Topics")
+    plt.ylabel("Perplexity score")
+    plt.legend(("Perplexity_values"), loc='best')
+    plt.savefig("../outputs/coherence_perplxity")
+
+
 if __name__ == "__main__":
-    loaded_lda_model = LdaModel.load("model32.gensim")
-    infile = open("corpus.pkl", 'rb')
-    loaded_corpus = pickle.load(infile)
-    infile.close()
-    loaded_dict = corpora.Dictionary.load("dictionary.gensim")
-    topics = loaded_lda_model.print_topics(num_words=4)
-    for topic_id in range(loaded_lda_model.num_topics):
-        topk = loaded_lda_model.show_topic(topic_id, 10)
-        topk_words = [w for w, _ in topk]
-        topic = '{}'.format(' '.join(topk_words))
-        blob = TextBlob(topic)
-        print(topic,": ",blob.sentiment.polarity)
+    flag = True
+    source_name, source_type = "data_10000_1", "csv"
+    if flag:
+        data = data_access(source_name, source_type)
+        lda_model = LdaModel.load("../outputs/model62.gensim")
+        infile = open("../outputs/corpus.pkl", 'rb')
+        corpus = pickle.load(infile)
+        infile.close()
+        dictionary = corpora.Dictionary.load("../outputs/dictionary.gensim")
+        topics = lda_model.print_topics(num_words=4)
+        dominant_topics(ldamodel=lda_model, corpus=corpus, texts=data)
+    else:
+        lda_model, corpus, dictionary = topic_analysis(source_name, source_type)
 
-    # # Visualize the topics
-    # visualisation = pyLDAvis.gensim_models.prepare(loaded_lda_model, loaded_corpus, loaded_dict)
-    # pyLDAvis.save_html(visualisation, 'LDA_Visualization.html')
+    # Visualize the topics
+    visualisation = pyLDAvis.gensim_models.prepare(lda_model, corpus, dictionary)
+    pyLDAvis.save_html(visualisation, '../outputs/LDA_Visualization.html')
 
-    # text_data = []
-    # # myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
-    # # mydb = myclient["reddit"]
-    # # mycol = mydb["deletedData"]
-    # # data = mycol.find({}, {"title": 1, "selftext": 1, "subreddit": 1})
-    # data = pd.read_csv("../data_10000_1.csv")
-    # data = data[data["is_crosspostable"] == False]
-    # for ind, x in data.iterrows():
-    #     tokens = prepare_text_for_lda(x["title"])
-    #     # tokens.extend(prepare_text_for_lda(x["selftext"]))
-    #     print(tokens)
-    #     text_data.append(tokens)
-    #
-    # dictionary = corpora.Dictionary(text_data)
-    # corpus = [dictionary.doc2bow(text) for text in text_data]
-    # pickle.dump(corpus, open('corpus.pkl', 'wb'))
-    # dictionary.save('dictionary.gensim')
-    #
-    # # NUM_TOPICS = 5
-    #
-    # limit = 36
-    # start = 2
-    # step = 6
-    # coherence_values = []
-    # perplexity_values = []
-    # model_list = []
-    # best_num_of_topics = 0
-    # bst_coh = 0
-    # for num_of_topic in range(start, limit, step):
-    #     print(num_of_topic)
-    #     ldamodel = gensim.models.ldamodel.LdaModel(corpus, num_topics=num_of_topic, id2word=dictionary, passes=15)
-    #     ldamodel.save('model{}.gensim'.format(num_of_topic))
-    #     topics = ldamodel.print_topics(num_words=4)
-    #     for topic in topics:
-    #         print(topic)
-    #     # Compute Perplexity
-    #     perplexity_value = ldamodel.log_perplexity(corpus)
-    #     print('\nPerplexity: ', perplexity_value)  # a measure of how good the model is. lower the better.
-    #     perplexity_values.append(perplexity_value)
-    #
-    #     # Compute Coherence Score
-    #     coherence_model_lda = CoherenceModel(model=ldamodel, texts=text_data, dictionary=dictionary, coherence='c_v')
-    #     coherence_lda = coherence_model_lda.get_coherence()
-    #     if coherence_lda > bst_coh:
-    #         bst_coh = coherence_lda
-    #         best_num_of_topics = num_of_topic
-    #     coherence_values.append(coherence_lda)
-    #     print('\nCoherence Score: ', coherence_lda)
-    # x = range(start, limit, step)
-    # fig, axs = plt.subplots(2)
-    # axs[0].plot(x, coherence_values)
-    # plt.xlabel("Num Topics")
-    # plt.ylabel("Coherence score")
-    # plt.legend(("coherence_values"), loc='best')
-    # axs[1].plot(x, perplexity_values)
-    # plt.xlabel("Num Topics")
-    # plt.ylabel("perplexity score")
-    # plt.legend(("perplexity_values"), loc='best')
-    # plt.savefig("coherence_perplxity")
-    #
-    # ldamodel = LdaModel.load("model{}.gensim".format(best_num_of_topics))
-    # # Visualize the topics
-    # visualisation = pyLDAvis.gensim_models.prepare(ldamodel, corpus, dictionary)
-    # pyLDAvis.save_html(visualisation, 'LDA_Visualization.html')
+    # for topic_id in range(loaded_lda_model.num_topics):
+    #     topk = loaded_lda_model.show_topic(topic_id, 10)
+    #     topk_words = [w for w, _ in topk]
+    #     topic = '{}'.format(' '.join(topk_words))
+    #     blob = TextBlob(topic)
+    #     print(topic,": ",blob.sentiment.polarity)

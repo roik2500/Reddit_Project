@@ -1,7 +1,7 @@
 import csv
 import datetime
 
-import PushshiftAPI
+import PushshiftApi
 from api_utils import Sentiment
 import reddit_api
 import pandas as pd
@@ -14,7 +14,6 @@ if __name__ == '__main__':
     def get_selftext_byid(id):
         ss = requests.get(f'https://api.pushshift.io/reddit/submission/search?ids={id}').text.split('\n')[40]
         selftext = ss[24:-2]
-        print(s)
         print(ss)
         print(selftext)
         return selftext
@@ -34,7 +33,7 @@ if __name__ == '__main__':
     read_from_csv('../data/data_removed.csv')
 
     start_time = int(datetime.datetime(2019, 1, 1).timestamp())
-    submissions = PushshiftAPI.get_submission(Subreddit='mexico', start_time=start_time,
+    submissions = PushshiftApi.get_submission(Subreddit='mexico', start_time=start_time,
                                               filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id',
                                                       'link_id'],
                                               Limit=10, mod_removed_boolean=True, user_removed_boolean=False)
