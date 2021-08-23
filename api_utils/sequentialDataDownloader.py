@@ -2,7 +2,7 @@ import csv
 import datetime
 
 import PushshiftAPI
-import roi
+from api_utils import roi
 import reddit_api
 import pandas as pd
 import praw
