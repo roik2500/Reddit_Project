@@ -56,7 +56,7 @@ def extract_reddit_data_parallel(sub):
 if __name__ == '__main__':
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        limit = 10000
+        limit = 100000
         start_time = int(datetime.datetime(2020, 9, 1).timestamp())
         end_time = int(datetime.datetime(2020, 9, 15).timestamp())
         sub_reddit = 'politics'
@@ -68,6 +68,7 @@ if __name__ == '__main__':
                                                        Limit=limit, mod_removed_boolean=True,
                                                        user_removed_boolean=False)
         res = []
+        files_counter = 1
         for submission in submissions_list:
             res.append((executor.submit(extract_reddit_data_parallel, submission)))
             if len(res) % limit == 5000:
@@ -90,5 +91,6 @@ if __name__ == '__main__':
                                                            'created_utc',
                                                            'retrieved_on',
                                                            'comments'])
-                df.to_json("../data/data{}_{}_{}.csv".format(len(res),sub_reddit, start_time))
+                df.to_json("../data/data{}_{}_{}.json".format(files_counter, sub_reddit, start_time), orient="index")
+                files_counter += 1
                 res = []
