@@ -57,8 +57,8 @@ if __name__ == '__main__':
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         limit = 100000
-        start_time = int(datetime.datetime(2020, 9, 1).timestamp())
-        end_time = int(datetime.datetime(2020, 9, 15).timestamp())
+        start_time = int(datetime.datetime(2020, 9, 16).timestamp())
+        end_time = int(datetime.datetime(2020, 9, 30).timestamp())
         sub_reddit = 'politics'
         pushift = PushshiftApi()
         reddit = reddit_api()

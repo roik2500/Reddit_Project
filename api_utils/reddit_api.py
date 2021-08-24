@@ -6,7 +6,7 @@
 # # here we pass our login method (password), username, and password
 # data = {'grant_type': 'password',
 #         'username': 'ObjectiveExisting282 ',
-#         'password': ''}
+#         'password': 'sH231294'}
 #
 # # setup our header info, which gives reddit a brief description of our app
 # headers = {'User-Agent': 'MyBot/0.0.1'}
@@ -33,20 +33,19 @@ import pandas as pd
 
 
 class reddit_api:
-    def __init__(self):
+    def __init__(self, reddit):
         self.reddit = praw.Reddit(
             client_id="FVJ_dCHfJWeGtkI4ekc9ow",
             client_secret="lSslynhzT_oHLnKvxjaerTZ3jvbCrQ",
             user_agent="MyBot/0.0.1",
             username='ObjectiveExisting282 ',
-            password='',
+            password='sH231294',
         )
 
-
-# if __name__ == '__main__':
-#     reddit = reddit_api()
-#     submission_reddit = reddit.reddit.submission(id=["hgpif7", "hgpamk", "hgp8pd"])
-#     print(submission_reddit)
+if __name__ == '__main__':
+    reddit = reddit_api()
+    submission_reddit = reddit.reddit.submission(id=["hgpif7", "hgpamk", "hgp8pd"])
+    print(submission_reddit)
 
 # path = r'C:\Users\shimon\Visual Studio Code Projects\Reddit_Project'
 # df = pd.read_json(path)
