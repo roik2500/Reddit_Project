@@ -33,7 +33,7 @@ import pandas as pd
 
 
 class reddit_api:
-    def __init__(self):
+    def __init__(self, reddit):
         self.reddit = praw.Reddit(
             client_id="FVJ_dCHfJWeGtkI4ekc9ow",
             client_secret="lSslynhzT_oHLnKvxjaerTZ3jvbCrQ",
@@ -42,10 +42,9 @@ class reddit_api:
             password='sH231294',
         )
 
-
 if __name__ == '__main__':
     reddit = reddit_api()
-    submission_reddit = reddit.reddit.submission(id= "hgp8pd")
+    submission_reddit = reddit.reddit.submission(id=["hgpif7", "hgpamk", "hgp8pd"])
     print(submission_reddit)
 
 # path = r'C:\Users\shimon\Visual Studio Code Projects\Reddit_Project'
