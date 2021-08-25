@@ -46,8 +46,13 @@ class PushshiftApi:
                                         'subreddit_type',
                                         'thumbnail', 'upvote_ratio', 'whitelist_status', 'wls']
 
-    def get_submission(self, Subreddit, start_time, end_time, filter, Limit, mod_removed_boolean, user_removed_boolean):
-        posts = self.api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit, filter=filter,
+    def get_submission(self, Subreddit, start_time, end_time,  Limit, mod_removed_boolean, user_removed_boolean,filter=None,):
+        if filter is None:
+            posts = self.api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit,
+                                                 mod_removed=mod_removed_boolean,
+                                                 user_removed=user_removed_boolean, after=start_time, before=end_time, can_gild=True)
+        else:
+            posts = self.api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit, filter=filter,
                                                  mod_removed=mod_removed_boolean,
                                                  user_removed=user_removed_boolean, after=start_time, before=end_time, can_gild=True)
 
