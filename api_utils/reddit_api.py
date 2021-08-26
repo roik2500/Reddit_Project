@@ -33,13 +33,14 @@ import pandas as pd
 
 
 class reddit_api:
-    def __init__(self, reddit):
+    def __init__(self):
         self.reddit = praw.Reddit(
             client_id="FVJ_dCHfJWeGtkI4ekc9ow",
             client_secret="lSslynhzT_oHLnKvxjaerTZ3jvbCrQ",
             user_agent="MyBot/0.0.1",
             username='ObjectiveExisting282 ',
             password='sH231294',
+            check_for_async=False
         )
 
 if __name__ == '__main__':
