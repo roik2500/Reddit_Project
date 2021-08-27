@@ -63,7 +63,7 @@ async def extract_reddit_data_parallel(sub):
     #     final_lst = []
 
 
-async def write_to_mongo(sub,pbar_):
+async def write_to_mongo(sub, pbar_):
     start_time = time.time()
     try:
         reddit_post = await extract_reddit_data_parallel(sub)
@@ -93,8 +93,8 @@ async def main(_submissions_list):
     #     # write_to_mongo(submission)
     #     mongo_tasks.append(asyncio.create_task(write_to_mongo(submission)))
     # responses = [f for f in tqdm(asyncio.as_completed(mongo_tasks), total=len(mongo_tasks))]
-    with tqdm(total=len(submissions_list)+1) as pbar:
-        await asyncio.gather(*[write_to_mongo(submission, pbar) for submission in submissions_list])
+    with tqdm(total=len(_submissions_list)) as pbar:
+        await asyncio.gather(*[write_to_mongo(submission, pbar) for submission in _submissions_list])
     # loop = asyncio.get_event_loop()
     # loop.run_until_complete(mongo_tasks)
     # loop.close()
@@ -104,8 +104,8 @@ if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
     logging.basicConfig(format='%(asctime)s %(message)s')
     # with concurrent.futures.ThreadPoolExecutor() as executor:
-    limit = 100000
-    start_time = int(datetime.datetime(2019, 9, 1).timestamp())
+    limit = 10
+    start_time = int(datetime.datetime(2020, 9, 1).timestamp())
     end_time = int(datetime.datetime(2020, 9, 15).timestamp())
     sub_reddit = 'politics'
     collection_name = sub_reddit
@@ -116,16 +116,19 @@ if __name__ == '__main__':
     pushift = PushshiftApi()
     reddit = reddit_api()
     start_run_time = time.time()
-    submissions_list = pushift.get_submission(Subreddit=sub_reddit, start_time=start_time, end_time=end_time,
+    # submissions_list = pushift.get_submission(Subreddit=sub_reddit, start_time=start_time, end_time=end_time,
+    #                                           # filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id',
+    #                                           #         'link_id', 'created_utc', 'retrieved_on', 'can_gild'],
+    #                                           Limit=limit)
+    # end_time = time.time()
+    # elapsed_time = end_time - start_run_time
+    # logging.info("Extract from pushift time: {}".format(elapsed_time))
+    # submissions_list = submissions_list[last_index:]  # if you want to recover, change last index
+    asyncio.run(main(pushift.get_submission(Subreddit=sub_reddit, start_time=start_time, end_time=end_time,
                                               # filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id',
                                               #         'link_id', 'created_utc', 'retrieved_on', 'can_gild'],
-                                              Limit=limit, mod_removed_boolean=True,
-                                              user_removed_boolean=False)
-    end_time = time.time()
-    elapsed_time = end_time - start_run_time
-    logging.info("Extract from pushift time: {}".format(elapsed_time))
-    submissions_list = submissions_list[last_index:]  # if you want to recover, change last index
-    asyncio.run(main(submissions_list))
+                                              Limit=limit)))
+    # asyncio.run(main(submissions_list))
     # loop.run_until_complete(asyncio.wait(mongo_tasks))
     # if len(res) % 100 == 0:
     #     # writer.writerows(lst)
