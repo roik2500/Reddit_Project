@@ -2,6 +2,9 @@ import concurrent.futures
 import datetime
 import multiprocessing
 import asyncio
+import time
+import logging
+
 import pymongo
 
 from PushshiftApi import PushshiftApi
@@ -10,7 +13,7 @@ import pandas as pd
 from tqdm import tqdm
 
 
-def extract_reddit_data_parallel(sub):
+async def extract_reddit_data_parallel(sub):
     url = sub["permalink"]
     # sub_id = sub["id"]
     pushift.convert_time_format(sub)
@@ -60,63 +63,91 @@ def extract_reddit_data_parallel(sub):
     #     final_lst = []
 
 
-async def write_to_mongo(sub):
-    mycol.insert_one(extract_reddit_data_parallel(sub))
+async def write_to_mongo(sub,pbar_):
+    start_time = time.time()
+    try:
+        reddit_post = await extract_reddit_data_parallel(sub)
+        end_time = time.time()
+        elapsed_time_red_api = end_time - start_time
+        end_time = time.time()
+        mycol.insert_one(reddit_post)
+
+    except pymongo.errors.DuplicateKeyError:
+        print(reddit_post["pushift_api"]["id"] + " is already exist!")
+        return
+    end_total_time = time.time()
+    elapsed_mongo_time = end_total_time - end_time
+    elapsed_total_time = end_total_time - start_time
+    logging.info("Extract from reddit time: {}. Insert to db time: {}. Total time: {}".format(elapsed_time_red_api,
+                                                                                              elapsed_mongo_time,
+                                                                                              elapsed_total_time))
+    pbar_.update(1)
 
 
 async def main(_submissions_list):
     mongo_tasks = []
-    loop = asyncio.get_event_loop()
-    for submission in tqdm(submissions_list):
-        # res.append((executor.submit(extract_reddit_data_parallel, submission)))
-        # res = executor.submit(extract_reddit_data_parallel, submission)
-        # res.result()
-        mongo_tasks.append(asyncio.create_task(write_to_mongo(submission)))
-    loop.run_until_complete(asyncio.wait(mongo_tasks))
-    loop.close()
+    # for submission in tqdm(submissions_list):
+    #     # res.append((executor.submit(extract_reddit_data_parallel, submission)))
+    #     # res = executor.submit(extract_reddit_data_parallel, submission)
+    #     # res.result()
+    #     # write_to_mongo(submission)
+    #     mongo_tasks.append(asyncio.create_task(write_to_mongo(submission)))
+    # responses = [f for f in tqdm(asyncio.as_completed(mongo_tasks), total=len(mongo_tasks))]
+    with tqdm(total=len(submissions_list)+1) as pbar:
+        await asyncio.gather(*[write_to_mongo(submission, pbar) for submission in submissions_list])
+    # loop = asyncio.get_event_loop()
+    # loop.run_until_complete(mongo_tasks)
+    # loop.close()
+
 
 if __name__ == '__main__':
-    # loop = asyncio.get_event_loop()
-
+    logging.getLogger().setLevel(logging.INFO)
+    logging.basicConfig(format='%(asctime)s %(message)s')
     # with concurrent.futures.ThreadPoolExecutor() as executor:
-        limit = 100
-        start_time = int(datetime.datetime(2020, 9, 1).timestamp())
-        end_time = int(datetime.datetime(2020, 9, 15).timestamp())
-        sub_reddit = 'politics'
-        collection_name = sub_reddit + start_time.__str__()
-        myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
-        mydb = myclient["reddit"]
-        mycol = mydb[collection_name]
-        pushift = PushshiftApi()
-        reddit = reddit_api()
-        submissions_list = pushift.get_submission(Subreddit=sub_reddit, start_time=start_time, end_time=end_time,
-                                                  # filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id',
-                                                  #         'link_id', 'created_utc', 'retrieved_on', 'can_gild'],
-                                                  Limit=limit, mod_removed_boolean=True,
-                                                  user_removed_boolean=False)
-        asyncio.run(main(submissions_list))
-        # loop.run_until_complete(asyncio.wait(mongo_tasks))
-            # if len(res) % 100 == 0:
-            #     # writer.writerows(lst)
-            #     final_lst = []
-            #     for r in tqdm(res):
-            #         final_lst.append(r.result())
-            #     df = pd.DataFrame(data=final_lst)
-            #     # , columns=["permalink",
-            #     #                          "id",
-            #     #                          "is_crosspostable",
-            #     #                          "removed_by_category",
-            #     #                          "is_robot_indexable",
-            #     #                          "link_flair_richtext",
-            #     #                          "selftext",
-            #     #                          'url',
-            #     #                          'author',
-            #     #                          'title',
-            #     #                          'subreddit',
-            #     #                          'selftext_pushift',
-            #     #                          'created_utc',
-            #     #                          'retrieved_on',
-            #     #                          'comments'])
-            #     df.to_json("../data/data{}_{}_{}.json".format(files_counter, sub_reddit, start_time), orient="index")
-            #     files_counter += 1
-            #     res = []
+    limit = 100
+    start_time = int(datetime.datetime(2019, 9, 1).timestamp())
+    end_time = int(datetime.datetime(2020, 9, 15).timestamp())
+    sub_reddit = 'politics'
+    collection_name = sub_reddit + start_time.__str__()
+    last_index = 0
+    myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
+    mydb = myclient["reddit"]
+    mycol = mydb[collection_name]
+    pushift = PushshiftApi()
+    reddit = reddit_api()
+    start_run_time = time.time()
+    submissions_list = pushift.get_submission(Subreddit=sub_reddit, start_time=start_time, end_time=end_time,
+                                              # filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id',
+                                              #         'link_id', 'created_utc', 'retrieved_on', 'can_gild'],
+                                              Limit=limit, mod_removed_boolean=True,
+                                              user_removed_boolean=False)
+    end_time = time.time()
+    elapsed_time = end_time - start_run_time
+    logging.info("Extract from pushift time: {}".format(elapsed_time))
+    submissions_list = submissions_list[last_index:]  # if you want to recover, change last index
+    asyncio.run(main(submissions_list))
+    # loop.run_until_complete(asyncio.wait(mongo_tasks))
+    # if len(res) % 100 == 0:
+    #     # writer.writerows(lst)
+    #     final_lst = []
+    #     for r in tqdm(res):
+    #         final_lst.append(r.result())
+    #     df = pd.DataFrame(data=final_lst)
+    #     # , columns=["permalink",
+    #     #                          "id",
+    #     #                          "is_crosspostable",
+    #     #                          "removed_by_category",
+    #     #                          "is_robot_indexable",
+    #     #                          "link_flair_richtext",
+    #     #                          "selftext",
+    #     #                          'url',
+    #     #                          'author',
+    #     #                          'title',
+    #     #                          'subreddit',
+    #     #                          'selftext_pushift',
+    #     #                          'created_utc',
+    #     #                          'retrieved_on',
+    #     #                          'comments'])
+    #     df.to_json("../data/data{}_{}_{}.json".format(files_counter, sub_reddit, start_time), orient="index")
+    #     files_counter += 1
+    #     res = []
