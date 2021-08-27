@@ -39,7 +39,7 @@ class reddit_api:
             client_secret="lSslynhzT_oHLnKvxjaerTZ3jvbCrQ",
             user_agent="MyBot/0.0.1",
             username='ObjectiveExisting282 ',
-            password='sH231294',
+            password='',
             check_for_async=False
         )
 
