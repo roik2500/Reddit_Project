@@ -28,20 +28,22 @@
 #                    headers=headers)
 #
 # print(res.json())  # let's see what we get
+import os
 import praw
-import pandas as pd
-
+from dotenv import load_dotenv
+load_dotenv()
 
 class reddit_api:
     def __init__(self):
         self.reddit = praw.Reddit(
-            client_id="FVJ_dCHfJWeGtkI4ekc9ow",
-            client_secret="lSslynhzT_oHLnKvxjaerTZ3jvbCrQ",
-            user_agent="MyBot/0.0.1",
-            username='ObjectiveExisting282 ',
-            password='sH231294',
+            client_id=os.getenv("CLIENT_DB"),
+            client_secret=os.getenv("CLIENT_SECRET"),
+            user_agent=os.getenv("USER_AGENT"),
+            username=os.getenv("USERNAME"),
+            password=os.getenv("PASSWORD"),
             check_for_async=False
         )
+
 
 if __name__ == '__main__':
     reddit = reddit_api()

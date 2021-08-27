@@ -104,11 +104,11 @@ if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
     logging.basicConfig(format='%(asctime)s %(message)s')
     # with concurrent.futures.ThreadPoolExecutor() as executor:
-    limit = 100
+    limit = 100000
     start_time = int(datetime.datetime(2019, 9, 1).timestamp())
     end_time = int(datetime.datetime(2020, 9, 15).timestamp())
     sub_reddit = 'politics'
-    collection_name = sub_reddit + start_time.__str__()
+    collection_name = sub_reddit
     last_index = 0
     myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
     mydb = myclient["reddit"]
