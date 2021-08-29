@@ -1,6 +1,5 @@
 import csv
 import datetime
-
 import PushshiftApi
 from api_utils import Sentiment
 import reddit_api

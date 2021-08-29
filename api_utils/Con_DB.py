@@ -3,7 +3,6 @@ This class are responsible on the connection to our DB.
 '''
 import pymongo
 
-
 class Con_DB:
     def __init__(self):
         self.myclient = pymongo.MongoClient("mongodb+srv://roi:1234@redditdata.aav2q.mongodb.net/")

@@ -46,58 +46,60 @@ class PushshiftApi:
                                         'subreddit_type',
                                         'thumbnail', 'upvote_ratio', 'whitelist_status', 'wls']
 
-    def get_submission(self, Subreddit, start_time, end_time,  Limit, filter=None,):
+    def get_submission(self, Subreddit, start_time, end_time,  Limit, mod_removed_boolean, user_removed_boolean,filter=None,):
         if filter is None:
             posts = self.api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit,
-                                                 after=start_time, before=end_time, can_gild=True)
+                                                 mod_removed=mod_removed_boolean,
+                                                 user_removed=user_removed_boolean, after=start_time, before=end_time, can_gild=True)
         else:
             posts = self.api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit, filter=filter,
-                                           after=start_time, before=end_time, can_gild=True)
+                                                 mod_removed=mod_removed_boolean,
+                                                 user_removed=user_removed_boolean, after=start_time, before=end_time, can_gild=True)
 
         submissions = [post for post in posts]
 
         return submissions
 
-    def search_submissions_and_comments(self):
+    def search_submissions_and_comments(self, Subreddit, start_time, end_time, filter, Limit, mod_removed_boolean,
+                                        user_removed_boolean):
+        # The `search_comments` and `search_submissions` methods return generator objects
+        posts = self.api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit, filter=filter,
+                                                 mod_removed=mod_removed_boolean,
+                                                 user_removed=user_removed_boolean, after=start_time, before=end_time,
+                                                 can_gild=True)
+        submissions = [post for post in posts]
+        submission_ids_list = []
+
+        for submission in tqdm(submissions):
+            submission_ids_list.append(submission['id'])
+            self.convert_time_format(submission)
+            # initial comments section in every post
+            submission['comments'] = {}
 
         # The `search_comments` and `search_submissions` methods return generator objects
-        # posts = self.api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit, filter=filter,
-        #                                          mod_removed=mod_removed_boolean,
-        #                                          user_removed=user_removed_boolean, after=start_time, before=end_time,
-        #                                          can_gild=True)
-        # submissions = [post for post in posts]
-        # submission_ids_list = []
+        # comment_ids = api_pmaw.search_submission_comment_ids(ids=submission_ids_list)
+        # comment_id_list = [c_id for c_id in comment_ids]
         #
-        # for submission in tqdm(submissions):
-        #     submission_ids_list.append(submission['id'])
-        #     self.convert_time_format(submission)
-        #     # initial comments section in every post
-        #     submission['comments'] = {}
-
-        # The `search_comments` and `search_submissions` methods return generator objects
-        comment_ids = self.api_pmaw.search_submission_comment_ids(ids=['kxfuqe'])
-        comment_id_list = [c_id for c_id in comment_ids]
-
-        # The `search_comments` and `search_submissions` methods return generator objects
-        comments = self.api_pmaw.search_comments(ids=comment_id_list)
-        comment_list = []
-        for comment in comments:
-            comment_list.append(comment)
-            self.convert_time_format(comment)
-
-        comments_df = pd.DataFrame(comment_list, index=comment_id_list)
-        comments_df.drop(self.comments_columns_to_remove, axis=1, inplace=True)
-
+        # # The `search_comments` and `search_submissions` methods return generator objects
+        # comments = api_pmaw.search_comments(ids=comment_id_list)
+        # comment_list = []
+        # for comment in comments:
+        #     comment_list.append(comment)
+        #     convert_time_format(comment)
+        #
+        # comments_df = pd.DataFrame(comment_list, index=comment_id_list)
+        # comments_df.drop(comments_columns_to_remove, axis=1, inplace=True)
+        #
         # for index, row_comment in comments_df.iterrows():
-        #     self.match_comment_to_post(row_comment, self.submission_ids_list, submissions)
+        #     match_comment_to_post(row_comment, submission_ids_list, submissions)
 
-        # posts_df = pd.DataFrame(submissions, index=submission_ids_list)
+        posts_df = pd.DataFrame(submissions, index=submission_ids_list)
         # posts_df.drop(self.posts_columns_to_remove, axis=1, inplace=True)
         # print(posts_df)
         # convert pandas Data frame to Json
         path = r'/'
-        # posts_df.to_json('sampleJsonPosts_35000.json', orient="index")
-        # posts_df.to_csv('data_35000_psio.csv')
+        posts_df.to_json('sampleJsonPosts_35000.json', orient="index")
+        posts_df.to_csv('data_35000_psio.csv')
         # comments_df.to_json(path + '\sampleJsonComments.json', orient="index")
 
     def convert_time_format(self, comment_or_post):
