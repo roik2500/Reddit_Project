@@ -110,6 +110,7 @@ if __name__ == '__main__':
     sub_reddit = 'politics'
     collection_name = sub_reddit
     last_index = 0
+
     myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
     mydb = myclient["reddit"]
     mycol = mydb[collection_name]

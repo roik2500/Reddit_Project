@@ -57,7 +57,7 @@ def prepare_text_for_lda(text):
     return tokens
 
 
-def topic_analysis(source_type, source_name):
+def topic_analysis(src_name, src_type):
     text_data = []
     limit = 90
     start = 2
@@ -67,7 +67,7 @@ def topic_analysis(source_type, source_name):
     best_num_of_topics = 0
     bst_coh = 0
     best_model = 0
-    data = data_access(source_name, source_type)
+    data = data_access(src_name, src_type)
     for ind, x in tqdm(data.iterrows()):
         tokens = prepare_text_for_lda(x["title"])
         if not pd.isnull(x["selftext"]) and not x["selftext"].__contains__("[removed]") and x[
@@ -149,8 +149,9 @@ def extract_plots(coherence_values, limit, perplexity_values, start, step):
 
 
 if __name__ == "__main__":
-    flag = True
-    source_name, source_type = "data_10000_1", "csv"
+    flag = False  # true if the model already built
+    source_name, source_type = "wallstreetbets_4", "mongo"
+
     if flag:
         data = data_access(source_name, source_type)
         lda_model = LdaModel.load("../outputs/model62.gensim")

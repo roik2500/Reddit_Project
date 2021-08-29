@@ -5,35 +5,41 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# note that CLIENT_ID refers to 'personal use script' and SECRET_TOKEN to 'token'
-auth = requests.auth.HTTPBasicAuth(os.getenv("CLIENT_DB"), os.getenv("CLIENT_SECRET"))
 
-# here we pass our login method (password), username, and password
-data = {'grant_type': 'password',
-        'username': os.getenv("USERNAME"),
-        'password': os.getenv("PASSWORD")}
-
-# setup our header info, which gives reddit a brief description of our app
-headers = {'User-Agent': os.getenv("USER_AGENT")}
-
-# send our request for an OAuth token
-res = requests.post('https://www.reddit.com/api/v1/access_token',
-                    auth=auth, data=data, headers=headers)
-
-# convert response to JSON and pull access_token value
-TOKEN = res.json()['access_token']
-
-# add authorization to our headers dictionary
-headers = {**headers, **{'Authorization': f"bearer {TOKEN}"}}
-
-# while the token is valid (~2 hours) we just add headers=headers to our requests
-requests.get('https://oauth.reddit.com/api/v1/me', headers=headers)
-
-res = requests.get("https://oauth.reddit.com/r/python/hot",
-                   headers=headers)
-
-print(res.json())  # let's see what we get
-
+# CLIENT_DB = os.getenv("CLIENT_DB")
+# CLIENT_SECRET = os.getenv("CLIENT_SECRET")
+# PASSWORD = os.getenv("PASSWORD")
+# USERNAME = os.getenv("USER_NAME")
+# USER_AGENT = os.getenv("USER_AGENT")
+# # note that CLIENT_ID refers to 'personal use script' and SECRET_TOKEN to 'token'
+# auth = requests.auth.HTTPBasicAuth(CLIENT_DB, CLIENT_SECRET)
+#
+# # here we pass our login method (password), username, and password
+# data = {'grant_type': 'password',
+#         'username': USERNAME,
+#         'password': PASSWORD}
+#
+# # setup our header info, which gives reddit a brief description of our app
+# headers = {'User-Agent': USER_AGENT}
+#
+# # send our request for an OAuth token
+# res = requests.post('https://www.reddit.com/api/v1/access_token',
+#                     auth=auth, data=data, headers=headers)
+#
+# # convert response to JSON and pull access_token value
+# TOKEN = res.json()['access_token']
+#
+# # add authorization to our headers dictionary
+# headers = {**headers, **{'Authorization': f"bearer {TOKEN}"}}
+#
+# # while the token is valid (~2 hours) we just add headers=headers to our requests
+# requests.get('https://oauth.reddit.com/api/v1/me', headers=headers)
+#
+# res = requests.get("https://oauth.reddit.com/r/python/hot",
+#                    headers=headers)
+#
+# print(res.json())  # let's see what we get
+#
 
 class reddit_api:
     def __init__(self):
