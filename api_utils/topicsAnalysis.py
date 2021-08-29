@@ -98,7 +98,7 @@ def topic_analysis(src_name, src_type):
         # print('\nCoherence Score: ', coherence_lda)
     best_model.save('../outputs/model{}.gensim'.format(best_num_of_topics))
     extract_plots(coherence_values, limit, perplexity_values, start, step)
-    dominant_topics(ldamodel=best_model, corpus=corpus, ids=data)
+    dominant_topics(ldamodel=best_model, corpus=corpus, ids=id_list)
     return best_model, corpus, dictionary
 
 
