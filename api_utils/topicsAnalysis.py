@@ -60,7 +60,7 @@ def prepare_text_for_lda(text):
 def topic_analysis(src_name, src_type):
     text_data = []
     limit = 90
-    start = 2
+    start = 288322
     step = 6
     coherence_values = []
     perplexity_values = []
@@ -68,9 +68,12 @@ def topic_analysis(src_name, src_type):
     bst_coh = 0
     best_model = 0
     data = data_access(src_name, src_type)
-    for ind, x in tqdm(data.iterrows()):
+    id_list = []
+    for x in tqdm(data):
+        x = x["pushift_api"]
+        id_list.append(x["pushift_api"]["id"])
         tokens = prepare_text_for_lda(x["title"])
-        if not pd.isnull(x["selftext"]) and not x["selftext"].__contains__("[removed]") and x[
+        if "selftext" in x and not x["selftext"].__contains__("[removed]") and x[
             "selftext"] != "[deleted]":
             tokens.extend(prepare_text_for_lda(x["selftext"]))
         text_data.append(tokens)
@@ -95,7 +98,7 @@ def topic_analysis(src_name, src_type):
         # print('\nCoherence Score: ', coherence_lda)
     best_model.save('../outputs/model{}.gensim'.format(best_num_of_topics))
     extract_plots(coherence_values, limit, perplexity_values, start, step)
-    dominant_topics(ldamodel=best_model, corpus=corpus, texts=data)
+    dominant_topics(ldamodel=best_model, corpus=corpus, ids=data)
     return best_model, corpus, dictionary
 
 
@@ -104,14 +107,15 @@ def data_access(source_name_, source_type_):
         myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
         mydb = myclient["reddit"]
         mycol = mydb[source_name_]
-        data_ = mycol.find({}, {"title": 1, "selftext": 1, "subreddit": 1})
+        data_ = mycol.find()
+        # data_ = mycol.find({}, {"title": 1, "selftext": 1, "subreddit": 1})
     elif source_type_ == "csv":
         data_ = pd.read_csv("../data/{}.csv".format(source_name_))
         data_ = data_[data_["is_crosspostable"] == False]
     return data_
 
 
-def dominant_topics(ldamodel, corpus, texts):
+def dominant_topics(ldamodel, corpus, ids):
     sent_topics_df = pd.DataFrame()
     for i, row in enumerate(ldamodel[corpus]):
         row = sorted(row, key=lambda x: (x[1]), reverse=True)
@@ -124,7 +128,7 @@ def dominant_topics(ldamodel, corpus, texts):
             else:
                 break
     sent_topics_df.columns = ['Dominant_Topic', 'Perc_Contribution', 'Topic_Keywords']
-    contents = pd.Series(texts.id)
+    contents = pd.Series(ids)
     sent_topics_df = pd.concat([sent_topics_df, contents], axis=1)
     sent_topics_df.columns = [
         'Dominant_Topic', 'Topic_Perc_Contrib', 'Keywords', 'post_id'
@@ -149,18 +153,21 @@ def extract_plots(coherence_values, limit, perplexity_values, start, step):
 
 
 if __name__ == "__main__":
-    flag = False  # true if the model already built
-    source_name, source_type = "wallstreetbets_4", "mongo"
-
+    flag = True  # true if the model already built
+    source_name, source_type = "wallstreetbets", "mongo"
+    best_model_path = "../outputs/model80.gensim"
     if flag:
+        id_list = []
         data = data_access(source_name, source_type)
-        lda_model = LdaModel.load("../outputs/model62.gensim")
+        for x in data:
+            id_list.append(x["pushift_api"]["id"])
+        lda_model = LdaModel.load(best_model_path)
         infile = open("../outputs/corpus.pkl", 'rb')
         corpus = pickle.load(infile)
         infile.close()
         dictionary = corpora.Dictionary.load("../outputs/dictionary.gensim")
         topics = lda_model.print_topics(num_words=4)
-        dominant_topics(ldamodel=lda_model, corpus=corpus, texts=data)
+        dominant_topics(ldamodel=lda_model, corpus=corpus, ids=id_list)
     else:
         lda_model, corpus, dictionary = topic_analysis(source_name, source_type)
 

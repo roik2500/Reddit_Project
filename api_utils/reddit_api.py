@@ -47,7 +47,7 @@ class reddit_api:
             client_id=os.getenv("CLIENT_DB"),
             client_secret=os.getenv("CLIENT_SECRET"),
             user_agent=os.getenv("USER_AGENT"),
-            username=os.getenv("USERNAME"),
+            username=os.getenv("USER_NAME"),
             password=os.getenv("PASSWORD"),
             check_for_async=False
         )
