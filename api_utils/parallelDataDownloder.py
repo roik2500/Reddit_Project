@@ -50,25 +50,27 @@ if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
     logging.basicConfig(format='%(asctime)s %(message)s')
     # parameters
-    limit = 10
-    start_time = int(datetime.datetime(2020, 9, 1).timestamp())
-    end_time = int(datetime.datetime(2020, 9, 15).timestamp())
-    sub_reddit = 'politics'
-    collection_name = sub_reddit
-    last_index = 0
-    ######
-    myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
-    mydb = myclient["reddit"]
-    mycol = mydb[collection_name]
-    pushift = PushshiftApi()
-    reddit = reddit_api()
-    start_run_time = time.time()
-    submissions_list = pushift.get_submission(Subreddit=sub_reddit, start_time=start_time, end_time=end_time,
-                                              # filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id',
-                                              #         'link_id', 'created_utc', 'retrieved_on', 'can_gild'],
-                                              Limit=limit)
-    end_time = time.time()
-    elapsed_time = end_time - start_run_time
-    logging.info("Extract from pushift time: {}".format(elapsed_time))
-    submissions_list = submissions_list[last_index:]  # if you want to recover, change last index
-    asyncio.run(main(submissions_list))
+    for month in range(1,12):
+        for day in range(1,30,2):
+            limit = 80
+            start_time = int(datetime.datetime(2020, month, day).timestamp())
+            end_time = int(datetime.datetime(2020, month, day+1).timestamp())
+            sub_reddit = 'politics'
+            collection_name = sub_reddit
+            last_index = 0
+            ######
+            myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
+            mydb = myclient["reddit"]
+            mycol = mydb[collection_name]
+            pushift = PushshiftApi()
+            reddit = reddit_api()
+            start_run_time = time.time()
+            submissions_list = pushift.get_submission(Subreddit=sub_reddit, start_time=start_time, end_time=end_time,
+                                                      # filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id',
+                                                      #         'link_id', 'created_utc', 'retrieved_on', 'can_gild'],
+                                                      Limit=limit)
+            end_time = time.time()
+            elapsed_time = end_time - start_run_time
+            logging.info("Extract from pushift time: {}".format(elapsed_time))
+            submissions_list = submissions_list[last_index:]  # if you want to recover, change last index
+            asyncio.run(main(submissions_list))
