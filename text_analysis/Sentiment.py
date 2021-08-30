@@ -96,6 +96,6 @@ if __name__ == '__main__':
     con = Con_DB()
     # post_csv = api.get_post_from_csv()
     # api.draw_sentiment_time(post_csv,'c')
-    posts = con.get_posts_from_mongodb(collection_name="politics_sample")
+    posts = con.get_cursor_from_mongodb(collection_name="politics_sample")
     text = con.get_posts_text(posts,"title")
     api.draw_sentiment_time(text)

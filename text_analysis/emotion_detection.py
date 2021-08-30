@@ -64,7 +64,7 @@ emotion_avg_in_month = ["Angry", "Fear", "Happy", "Sad", "Surprise"]
 emotion_posts_avg_of_subreddit = {"Angry" : {}, "Fear": {},
                                     "Happy" : {}, "Sad": {}, "Surprise" : {}}
 
-posts = con_DB.get_posts_from_mongodb(db_name="reddit", collection_name="wallstreetbets")
+posts = con_DB.get_cursor_from_mongodb(db_name="reddit", collection_name="wallstreetbets")
 
 extract_posts_emotion_rate(posts, emotion_dict, 'title')
 

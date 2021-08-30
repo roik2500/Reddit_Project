@@ -32,7 +32,7 @@ if __name__ == '__main__':
 
     load_dotenv()
     reader = Reader()
-    posts = reader.get_posts_from_mongodb(auth=os.getenv('AUTH_DB'), db_name="reddit", collection_name="wallstreetbets1609452000")
+    posts = reader.get_cursor_from_mongodb(auth=os.getenv('AUTH_DB'), db_name="reddit", collection_name="wallstreetbets1609452000")
     data_ = posts.find({}, {"reddit_api": 1, "pushshift_api": 1})
     # Expand the cursor and construct the DataFrame
     df = pd.DataFrame(list(data_))

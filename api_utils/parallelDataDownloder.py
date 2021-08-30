@@ -58,9 +58,11 @@ if __name__ == '__main__':
             collection_name = sub_reddit
             last_index = 0
             ######
-            myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
-            mydb = myclient["reddit"]
-            mycol = mydb[collection_name]
+            con_db = Con_DB()
+            # myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
+            # mydb = myclient["reddit"]
+            # mycol = mydb[collection_name]
+            mycol = con_db.get_cursor_from_mongodb(collection_name=collection_name)
             pushift = PushshiftApi()
             reddit = reddit_api()
             start_run_time = time.time()
@@ -70,15 +72,3 @@ if __name__ == '__main__':
             logging.info("Extract from pushift time: {}".format(elapsed_time))
             submissions_list = submissions_list[last_index:]  # if you want to recover, change last index
             asyncio.run(main(submissions_list))
-
-    ######
-    con_db = Con_DB()
-    # mycol = con_db.get_posts_from_mongodb(collection_name=collection_name)
-    # myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
-    # mydb = myclient["reddit"]
-    # mycol = mydb[collection_name]
-    pushift = PushshiftApi()
-    reddit = reddit_api()
-    start_run_time = time.time()
-    submissions_list = pushift.get_submission(Subreddit=sub_reddit, start_time=start_time, end_time=end_time,
-

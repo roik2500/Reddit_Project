@@ -7,7 +7,7 @@ class Statistic:
     def __init__(self):
         # create a new object of connection to DB
         con = Con_DB()
-        post_collection = con.get_posts_from_mongodb(collection_name="wallstreetbets")
+        post_collection = con.get_cursor_from_mongodb(collection_name="wallstreetbets")
         self.posts = [post for post in post_collection.find({})]
         # self.df=pd.DataFrame(p)
         # pushshift_collection = con.get_posts_from_mongodb(collection_name="pushift_api")
