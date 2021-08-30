@@ -1,21 +1,19 @@
-import concurrent.futures
 import datetime
-import multiprocessing
 import asyncio
 import time
 import logging
-
 import pymongo
-
-from PushshiftApi import PushshiftApi
-from reddit_api import reddit_api
+from api_utils.PushshiftApi import PushshiftApi
+from api_utils.reddit_api import reddit_api
 from tqdm import tqdm
 
+from db_utils.Con_DB import Con_DB
 
 async def extract_reddit_data_parallel(sub):
     url = sub["permalink"]
     pushift.convert_time_format(sub)
     post_from_reddit = reddit.reddit.request('GET', url)
+    reddit.convert_time_format(post_from_reddit[0]['data']['children'][0]['data'])
     final = {"reddit_api": post_from_reddit, "pushift_api": sub}
     return final
 
@@ -74,3 +72,15 @@ if __name__ == '__main__':
             logging.info("Extract from pushift time: {}".format(elapsed_time))
             submissions_list = submissions_list[last_index:]  # if you want to recover, change last index
             asyncio.run(main(submissions_list))
+
+    ######
+    con_db = Con_DB()
+    # mycol = con_db.get_posts_from_mongodb(collection_name=collection_name)
+    # myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
+    # mydb = myclient["reddit"]
+    # mycol = mydb[collection_name]
+    pushift = PushshiftApi()
+    reddit = reddit_api()
+    start_run_time = time.time()
+    submissions_list = pushift.get_submission(Subreddit=sub_reddit, start_time=start_time, end_time=end_time,
+

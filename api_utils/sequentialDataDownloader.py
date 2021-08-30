@@ -1,12 +1,8 @@
-import csv
 import datetime
-import PushshiftApi
-from api_utils import Sentiment
-import reddit_api
+from api_utils.PushshiftApi import PushshiftApi
+from api_utils.reddit_api import reddit_api
 import pandas as pd
-import praw
 import requests
-from csv import reader
 
 if __name__ == '__main__':
 

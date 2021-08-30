@@ -14,7 +14,9 @@ import pyLDAvis.gensim_models
 import pyLDAvis
 from textblob import TextBlob
 from tqdm import tqdm
+from db_utils.Con_DB import Con_DB
 
+con_db = Con_DB()
 spacy.load('en_core_web_sm')
 parser = English()
 nltk.download('wordnet')
@@ -104,6 +106,7 @@ def topic_analysis(src_name, src_type):
 
 def data_access(source_name_, source_type_):
     if source_type_ == "mongo":
+        # mycol = con_db.get_posts_from_mongodb(collection_name=source_name_)
         myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
         mydb = myclient["reddit"]
         mycol = mydb[source_name_]

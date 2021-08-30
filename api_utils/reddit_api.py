@@ -1,26 +1,15 @@
-import requests
-import os
-import praw
-from dotenv import load_dotenv
-
-load_dotenv()
-
-
-# CLIENT_DB = os.getenv("CLIENT_DB")
-# CLIENT_SECRET = os.getenv("CLIENT_SECRET")
-# PASSWORD = os.getenv("PASSWORD")
-# USERNAME = os.getenv("USER_NAME")
-# USER_AGENT = os.getenv("USER_AGENT")
+# import requests
+#
 # # note that CLIENT_ID refers to 'personal use script' and SECRET_TOKEN to 'token'
-# auth = requests.auth.HTTPBasicAuth(CLIENT_DB, CLIENT_SECRET)
+# auth = requests.auth.HTTPBasicAuth('FVJ_dCHfJWeGtkI4ekc9ow', 'lSslynhzT_oHLnKvxjaerTZ3jvbCrQ')
 #
 # # here we pass our login method (password), username, and password
 # data = {'grant_type': 'password',
-#         'username': USERNAME,
-#         'password': PASSWORD}
+#         'username': 'ObjectiveExisting282 ',
+#         'password': 'sH231294'}
 #
 # # setup our header info, which gives reddit a brief description of our app
-# headers = {'User-Agent': USER_AGENT}
+# headers = {'User-Agent': 'MyBot/0.0.1'}
 #
 # # send our request for an OAuth token
 # res = requests.post('https://www.reddit.com/api/v1/access_token',
@@ -41,21 +30,37 @@ load_dotenv()
 # print(res.json())  # let's see what we get
 #
 
+import praw
+import os
+from dotenv import load_dotenv
+import datetime
+
+load_dotenv()
+
+
 class reddit_api:
     def __init__(self):
         self.reddit = praw.Reddit(
-            client_id=os.getenv("CLIENT_DB"),
-            client_secret=os.getenv("CLIENT_SECRET"),
-            user_agent=os.getenv("USER_AGENT"),
-            username=os.getenv("USER_NAME"),
-            password=os.getenv("PASSWORD"),
+            client_id=os.getenv('CLIENT_ID'),
+            client_secret=os.getenv('CLIENT_SECRET'),
+            user_agent=os.getenv('USER_AGENT'),
+            username=os.getenv('USER_NAME'),
+            password=os.getenv('PASSWORD'),
             check_for_async=False
         )
 
-# if __name__ == '__main__':
-#     reddit = reddit_api()
-#     submission_reddit = reddit.reddit.submission(id=["hgpif7", "hgpamk", "hgp8pd"])
-#     print(submission_reddit)
+    def convert_time_format(self, comment_or_post):
+        comment_or_post['created_utc'] = datetime.datetime.fromtimestamp(
+            str(int(comment_or_post['created_utc']))).isoformat().split(
+            "T")
+        comment_or_post['retrieved_on'] = datetime.datetime.fromtimestamp(
+            str(int(comment_or_post['retrieved_on']))).isoformat().split(
+            "T")
+
+if __name__ == '__main__':
+    reddit = reddit_api()
+    submission_reddit = reddit.reddit.submission(id=["hgpif7", "hgpamk", "hgp8pd"])
+    print(submission_reddit)
 
 # path = r'C:\Users\shimon\Visual Studio Code Projects\Reddit_Project'
 # df = pd.read_json(path)
