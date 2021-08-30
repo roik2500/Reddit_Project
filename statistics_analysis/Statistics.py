@@ -1,6 +1,5 @@
-from Con_DB import Con_DB
+from db_utils.Con_DB import Con_DB
 from tqdm import tqdm
-
 
 class Statistic:
     def __init__(self):
@@ -10,7 +9,7 @@ class Statistic:
     def precentage_media(self):
         # create a new object of connection to DB
         con = Con_DB()
-        posts = con.get_posts_from_mongodb("wallstreetbets")
+        posts = con.get_posts_from_mongodb(collection_name="deletedData")
 
         # # Taking the posts that contains only variable "is_video"
         # all_posts = con.get_posts_text(posts, "is_video")

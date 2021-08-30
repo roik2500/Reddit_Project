@@ -1,18 +1,11 @@
 import datetime
-import pymongo
 import re
-import pandas as pd
-import seaborn as sns
-from numpy import sort
-from sqlalchemy import true
 from textblob import TextBlob
 import matplotlib.pyplot as plt
 from afinn import Afinn
 from tqdm import tqdm
-import matplotlib.dates as mdates
-import nltk
 
-from api_utils.Con_DB import Con_DB
+from db_utils.Con_DB import Con_DB
 
 
 class Sentiment:
@@ -103,6 +96,6 @@ if __name__ == '__main__':
     con = Con_DB()
     # post_csv = api.get_post_from_csv()
     # api.draw_sentiment_time(post_csv,'c')
-    posts = con.get_posts_from_mongodb("politics_sample")
+    posts = con.get_posts_from_mongodb(collection_name="politics_sample")
     text = con.get_posts_text(posts,"title")
     api.draw_sentiment_time(text)
