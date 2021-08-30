@@ -27,6 +27,29 @@ class Con_DB:
         posts = mydb[collection_name]
         return posts
 
+
+    def get_posts_text(self, posts, name):
+        # return posts.find({'{}'.format(name): {"$exists": True}})
+        relevent_posts = []
+        for p in posts.find({}):
+            pushift_keys = p['pushift_api'].keys()
+            if 'title' not in pushift_keys: continue
+            relevent_posts.append(p)
+        return relevent_posts
+
+        # def get_post_from_csv():
+        #     df = pd.read_csv('./data/removed.csv')
+        #     return df
+
+        # def get_posts_from_mongodb(self, name_of_doc):
+        #     '''
+        #     This function is return the posts from mongoDB
+        #     :return:
+        #     '''
+        #     mydb = self.myclient["reddit"]
+        #     posts = mydb["{}".format(name_of_doc)]
+        #     return posts
+
     # def get_posts_from_mongodb(self,name_of_doc):
     #     '''
     #     This function is return the posts from mongoDB
@@ -35,3 +58,6 @@ class Con_DB:
     #     mydb = self.myclient["reddit"]
     #     posts = mydb["{}".format(name_of_doc)]
     #     return posts
+
+
+

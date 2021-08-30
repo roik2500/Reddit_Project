@@ -9,7 +9,7 @@ class Statistic:
     def precentage_media(self):
         # create a new object of connection to DB
         con = Con_DB()
-        posts = con.get_cursor_from_mongodb(collection_name="deletedData")
+        posts = con.get_cursor_from_mongodb(collection_name="politics")
 
         # # Taking the posts that contains only variable "is_video"
         # all_posts = con.get_posts_text(posts, "is_video")
