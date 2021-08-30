@@ -1,3 +1,4 @@
+from wordcloud import WordCloud
 import pandas as pd
 import pymongo
 import spacy
@@ -159,25 +160,38 @@ if __name__ == "__main__":
     if flag:
         id_list = []
         data = data_access(source_name, source_type)
-        for x in data:
-            id_list.append(x["pushift_api"]["id"])
+        # for x in tqdm(data):
+        #     id_list.append(x["pushift_api"]["id"])
         lda_model = LdaModel.load(best_model_path)
         infile = open("../outputs/corpus.pkl", 'rb')
         corpus = pickle.load(infile)
         infile.close()
         dictionary = corpora.Dictionary.load("../outputs/dictionary.gensim")
-        topics = lda_model.print_topics(num_words=4)
-        dominant_topics(ldamodel=lda_model, corpus=corpus, ids=id_list)
+        # topics = lda_model.print_topics(num_words=4)
+        # dominant_topics(ldamodel=lda_model, corpus=corpus, ids=id_list)
+        sentiment_topics = []
+        for topic_id in tqdm(range(lda_model.num_topics)):
+            topk = lda_model.show_topic(topic_id, 10)
+            topk_words = [w for w, _ in topk]
+            topic = '{}'.format(' '.join(topk_words))
+            blob = TextBlob(topic)
+            sentim = blob.sentiment.polarity
+            print(topic, ": ",sentim )
+            # Create and generate a word cloud image:
+            joined_topk_words = " ".join(topk_words)
+            wordcloud = WordCloud().generate(joined_topk_words)
+            sentiment_topics.append([topic_id, topic, sentim])
+
+            # Display the generated image:
+            plt.imshow(wordcloud, interpolation='bilinear')
+            plt.axis("off")
+            # plt.show()
+            plt.savefig("../outputs/worldcloud_{}".format(topic_id))
+        df = pd.DataFrame(data=sentiment_topics, columns=['topic_id', 'topic', 'sentim'])
+        df.to_csv("../outputs/topic_sentim.csv")
     else:
         lda_model, corpus, dictionary = topic_analysis(source_name, source_type)
 
     # Visualize the topics
-    visualisation = pyLDAvis.gensim_models.prepare(lda_model, corpus, dictionary)
-    pyLDAvis.save_html(visualisation, '../outputs/LDA_Visualization.html')
-
-    # for topic_id in range(loaded_lda_model.num_topics):
-    #     topk = loaded_lda_model.show_topic(topic_id, 10)
-    #     topk_words = [w for w, _ in topk]
-    #     topic = '{}'.format(' '.join(topk_words))
-    #     blob = TextBlob(topic)
-    #     print(topic,": ",blob.sentiment.polarity)
+    # visualisation = pyLDAvis.gensim_models.prepare(lda_model, corpus, dictionary)
+    # pyLDAvis.save_html(visualisation, '../outputs/LDA_Visualization.html')
