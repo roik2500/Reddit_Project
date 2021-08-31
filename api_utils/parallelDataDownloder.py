@@ -21,11 +21,11 @@ async def extract_reddit_data_parallel(sub):
 async def write_to_mongo(sub, pbar_):
     start_time = time.time()
     try:
-        reddit_post = await extract_reddit_data_parallel(sub)
+        reddit_post = await reddit.extract_reddit_data_parallel(sub)
         end_time = time.time()
         elapsed_time_red_api = end_time - start_time
         end_time = time.time()
-        mycol.insert_one(reddit_post)
+        con_db.posts_cursor.insert_to_db(reddit_post)
 
     except pymongo.errors.DuplicateKeyError:
         print(reddit_post["pushift_api"]["id"] + " is already exist!")
@@ -48,6 +48,7 @@ if __name__ == '__main__':
     logging.getLogger().setLevel(logging.INFO)
     logging.basicConfig(format='%(asctime)s %(message)s')
     # parameters
+    con_db = Con_DB()
     for month in tqdm(range(4, 13)):
         for day in tqdm(range(1, 28, 2)):
             logging.info("month: {}, day {}:".format(month, day))
@@ -58,10 +59,6 @@ if __name__ == '__main__':
             collection_name = sub_reddit
             last_index = 0
             ######
-            con_db = Con_DB()
-            # myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
-            # mydb = myclient["reddit"]
-            # mycol = mydb[collection_name]
             mycol = con_db.get_cursor_from_mongodb(collection_name=collection_name)
             pushift = PushshiftApi()
             reddit = reddit_api()

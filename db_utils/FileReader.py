@@ -15,9 +15,12 @@ class FileReader:
         df.head()
         return df
 
-    def read_from_csv(path):
+    def read_from_csv(self, path):
         df = pd.read_csv(path)
         return df
+
+    def write_to_csv(self, path, file_name, df_to_write):
+        df_to_write.to_csv(path + '\\' + file_name)
 
 # Press the green button in the gutter to run the script.
 # if __name__ == '__main__':

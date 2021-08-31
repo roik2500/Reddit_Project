@@ -34,6 +34,8 @@ import praw
 import os
 from dotenv import load_dotenv
 import datetime
+from api_utils.PushshiftApi import PushshiftApi
+
 
 load_dotenv()
 
@@ -48,14 +50,24 @@ class reddit_api:
             password=os.getenv('PASSWORD'),
             check_for_async=False
         )
+        self.pushshift = PushshiftApi()
 
     def convert_time_format(self, comment_or_post):
         comment_or_post['created_utc'] = datetime.datetime.fromtimestamp(
-            str(int(comment_or_post['created_utc']))).isoformat().split(
+            int(comment_or_post['created_utc'])).isoformat().split(
             "T")
-        comment_or_post['retrieved_on'] = datetime.datetime.fromtimestamp(
-            str(int(comment_or_post['retrieved_on']))).isoformat().split(
-            "T")
+
+    async def extract_reddit_data_parallel(self,sub):
+        url = sub["permalink"]
+        self.pushshift.convert_time_format(sub)
+        post_from_reddit = self.reddit.request('GET', url)
+        self.convert_time_format(post_from_reddit[0]['data']['children'][0]['data'])
+        relevent_data_post_from_reddit = \
+            {"t3_"+post_from_reddit[0]['data']['children'][0]['data']['id'] : post_from_reddit[0]['data']['children'][0]['data'],
+             "comments" : post_from_reddit[1]['data']['children']
+             }
+        final = {"reddit_api": relevent_data_post_from_reddit, "pushift_api": sub}
+        return final
 
 if __name__ == '__main__':
     reddit = reddit_api()
