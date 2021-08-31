@@ -10,12 +10,14 @@ if __name__ == '__main__':
     con = Con_DB()
     stat = Statistic()
 
+
     posts = con.get_cursor_from_mongodb(collection_name="politics")
     for post in tqdm(posts.find({})):
+
         # text = con.get_posts_text(posts,"title")
-        #api.update_sentiment_values(post)
+        api.update_sentiment_values(post)
         stat.precentage_media(con,post)
 
-    #api.draw_sentiment_time()
+    api.draw_sentiment_time()
     p = stat.get_percent()
 

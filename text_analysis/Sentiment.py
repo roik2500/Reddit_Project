@@ -20,6 +20,13 @@ class Sentiment:
             '''
         return ' '.join(re.sub("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)", " ", tweet).split())
 
+    def get_polarity(self,text):
+        analysis = TextBlob(self.clean_tweet(text))
+        return analysis.sentiment.polarity
+
+    def get_subjectivity(self, text):
+        analysis = TextBlob(self.clean_tweet(text))
+        return analysis.sentiment.subjectivity
 
     '''
     This function returning the sentiment of specific text
@@ -62,10 +69,16 @@ class Sentiment:
 
         self.total_posts += 1
         keys = post['pushift_api'].keys()
-        if 'selftext'  in keys:
-            temp = self.get_post_sentiment(post['pushift_api']['selftext'])
-        elif 'title' in keys:
-            temp = self.get_post_sentiment(post['pushift_api']['title'])
+        text = ""
+
+        if 'selftext' in keys:
+            text = post['pushift_api']['selftext']
+            text += post['pushift_api']['title']
+        else:
+        #if 'title' in keys:
+            text += post['pushift_api']['title']
+
+        temp = self.get_post_sentiment(text)
 
         # update the dict in order to know how many posts are positive,neutral or negative
         if temp == 'positive':
@@ -79,9 +92,9 @@ class Sentiment:
 
         # creating a list of all the text(title) per month
         if month not in self.text_per_month.keys():
-            self.text_per_month[month] = [post['pushift_api']['title']]
+            self.text_per_month[month] = [text]
         else:
-            self.text_per_month[month].append(post['pushift_api']['title'])
+            self.text_per_month[month].append(text)
         # data.append([month, temp])
 
 
@@ -99,7 +112,8 @@ class Sentiment:
 
         afn = Afinn()
         for text in tqdm(self.text_per_month.values()):
-            scores = sum([afn.score(article) for article in text]) / self.total_posts
+            #scores = sum([afn.score(article) for article in text]) / self.total_posts
+            scores = sum([self.get_polarity(article) for article in text]) / self.total_posts
             y_value.append(scores)
 
         self.text_per_month = dict(sorted(self.text_per_month.items(), key=lambda item: item[0]))
