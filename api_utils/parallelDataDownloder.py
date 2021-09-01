@@ -9,13 +9,13 @@ from tqdm import tqdm
 
 from db_utils.Con_DB import Con_DB
 
-async def extract_reddit_data_parallel(sub):
-    url = sub["permalink"]
-    pushift.convert_time_format(sub)
-    post_from_reddit = reddit.reddit.request('GET', url)
-    reddit.convert_time_format(post_from_reddit[0]['data']['children'][0]['data'])
-    final = {"reddit_api": post_from_reddit, "pushift_api": sub}
-    return final
+# async def extract_reddit_data_parallel(sub):
+#     url = sub["permalink"]
+#     pushift.convert_time_format(sub)
+#     post_from_reddit = reddit.reddit.request('GET', url)
+#     reddit.convert_time_format(post_from_reddit[0]['data']['children'][0]['data'])
+#     final = {"reddit_api": post_from_reddit, "pushift_api": sub}
+#     return final
 
 
 async def write_to_mongo(sub, pbar_):
@@ -25,7 +25,7 @@ async def write_to_mongo(sub, pbar_):
         end_time = time.time()
         elapsed_time_red_api = end_time - start_time
         end_time = time.time()
-        con_db.posts_cursor.insert_to_db(reddit_post)
+        con_db.insert_to_db(reddit_post)
 
     except pymongo.errors.DuplicateKeyError:
         print(reddit_post["pushift_api"]["id"] + " is already exist!")
@@ -49,13 +49,13 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(message)s')
     # parameters
     con_db = Con_DB()
-    for month in tqdm(range(4, 13)):
+    for month in tqdm(range(7, 13)):
         for day in tqdm(range(1, 28, 2)):
             logging.info("month: {}, day {}:".format(month, day))
-            limit = 80
+            limit = 220
             start_time = int(datetime.datetime(2020, month, day).timestamp())
             end_time = int(datetime.datetime(2020, month, day + 1).timestamp())
-            sub_reddit = 'politics'
+            sub_reddit = 'wallstreetbets'
             collection_name = sub_reddit
             last_index = 0
             ######

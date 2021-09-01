@@ -13,21 +13,36 @@ con_DB = Con_DB()
 reddit_api = reddit_api()
 
 
+
+
 def extract_posts_emotion_rate(posts, emotion_dict, text_filed):
+    text_data = []
     for post in posts.find({}):
-        if post['reddit_api'][0]['data']['children'][0]['data']['selftext'] == '[removed]':
-            reddit_api.convert_time_format(post['reddit_api'][0]['data']['children'][0]['data'])
-            year = int(datetime.strptime(post['reddit_api'][0]['data']['children'][0]['data']['created_utc'][0]
-                                          , "%Y-%m-%d").date().year)
-            month = int(datetime.strptime(post['reddit_api'][0]['data']['children'][0]['data']['created_utc'][0]
-                                          , "%Y-%m-%d").date().month)
-            date_key = str(year) + "/" + str(month)
-            if date_key in emotion_dict.keys():
-                emotion_dict[date_key].append([post['reddit_api'][0]['data']['children'][0]['data']['id'],
-                                    te.get_emotion(post['reddit_api'][0]['data']['children'][0]['data'][text_filed])])
-            else:
-                emotion_dict[date_key] = [[post['reddit_api'][0]['data']['children'][0]['data']['id'],
-                                   te.get_emotion(post['reddit_api'][0]['data']['children'][0]['data'][text_filed])]]
+        # if post['reddit_api'][0]['data']['children'][0]['data']['selftext'] == '[removed]':
+
+        reddit_api.convert_time_format(post['reddit_api'][0]['data']['children'][0]['data'])
+        year = int(datetime.strptime(post['reddit_api'][0]['data']['children'][0]['data']['created_utc'][0]
+                                      , "%Y-%m-%d").date().year)
+        month = int(datetime.strptime(post['reddit_api'][0]['data']['children'][0]['data']['created_utc'][0]
+                                      , "%Y-%m-%d").date().month)
+        date_key = str(year) + "/" + str(month)
+
+        x = post["pushift_api"]
+        # id_list.append(x["pushift_api"]["id"])
+        tokens = x["title"]
+        if "selftext" in x and not x["selftext"].__contains__("[removed]") and x[
+            "selftext"] != "[deleted]":
+            tokens+=x["selftext"]
+        # text_data.append(tokens)
+
+        if date_key in emotion_dict.keys():
+            emotion_dict[date_key].append([post['reddit_api'][0]['data']['children'][0]['data']['id'],
+                                # te.get_emotion(post['reddit_api'][0]['data']['children'][0]['data'][text_filed])])
+                                te.get_emotion(tokens)])
+        else:
+            emotion_dict[date_key] = [[post['reddit_api'][0]['data']['children'][0]['data']['id'],
+                               # te.get_emotion(post['reddit_api'][0]['data']['children'][0]['data'][text_filed])]]
+                               te.get_emotion(tokens)]]
 
 
 

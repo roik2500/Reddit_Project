@@ -61,12 +61,18 @@ class reddit_api:
         url = sub["permalink"]
         self.pushshift.convert_time_format(sub)
         post_from_reddit = self.reddit.request('GET', url)
+
         self.convert_time_format(post_from_reddit[0]['data']['children'][0]['data'])
+
         relevent_data_post_from_reddit = \
-            {"t3_"+post_from_reddit[0]['data']['children'][0]['data']['id'] : post_from_reddit[0]['data']['children'][0]['data'],
+            {"post" : post_from_reddit[0]['data']['children'][0]['data'],
              "comments" : post_from_reddit[1]['data']['children']
              }
-        final = {"reddit_api": relevent_data_post_from_reddit, "pushift_api": sub}
+
+        final = {
+                "post_id" : post_from_reddit[0]['data']['children'][0]['data']['id'],
+                "reddit_api": relevent_data_post_from_reddit, "pushift_api": sub
+                 }
         return final
 
 if __name__ == '__main__':
