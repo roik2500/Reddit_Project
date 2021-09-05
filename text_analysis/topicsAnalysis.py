@@ -1,3 +1,5 @@
+from time import sleep
+
 from wordcloud import WordCloud
 import pandas as pd
 import pymongo
@@ -5,7 +7,7 @@ import spacy
 from gensim import corpora
 import gensim
 from gensim.models import CoherenceModel, LdaModel
-from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt, gridspec
 from spacy.lang.en import English
 import nltk
 from nltk.corpus import wordnet as wn
@@ -17,7 +19,7 @@ from textblob import TextBlob
 from tqdm import tqdm
 from db_utils.Con_DB import Con_DB
 
-con_db = Con_DB()
+# con_db = Con_DB()
 spacy.load('en_core_web_sm')
 parser = English()
 nltk.download('wordnet')
@@ -62,64 +64,76 @@ def prepare_text_for_lda(text):
 
 def topic_analysis(src_name, src_type):
     text_data = []
-    limit = 90
-    start = 288322
+    limit = 13
+    start = 2
     step = 6
     coherence_values = []
     perplexity_values = []
     best_num_of_topics = 0
     bst_coh = 0
     best_model = 0
-    data = data_access(src_name, src_type)
+    second_best_num_of_topics = 0
+    second_bst_coh = 0
+    second_best_model = 0
+    data = con_db.get_cursor_from_mongodb(collection_name=source_name).find({})
     id_list = []
+
     for x in tqdm(data):
-        x = x["pushift_api"]
-        id_list.append(x["pushift_api"]["id"])
-        tokens = prepare_text_for_lda(x["title"])
-        if "selftext" in x and not x["selftext"].__contains__("[removed]") and x[
+        x_reddit = x["reddit_api"]["post"]
+        x_pushift = x["pushift_api"]
+        # if "selftext" in x_reddit and x_reddit["selftext"].__contains__("[removed]"):
+        id_list.append(x["post_id"])
+        tokens = prepare_text_for_lda(x_pushift["title"])
+        month = int(x_reddit["created_utc"][0].split('-')[1])
+        if "selftext" in x_pushift and not x_pushift["selftext"].__contains__("[removed]") and x_pushift[
             "selftext"] != "[deleted]":
-            tokens.extend(prepare_text_for_lda(x["selftext"]))
-        text_data.append(tokens)
-    dictionary = corpora.Dictionary(text_data)
-    corpus = [dictionary.doc2bow(text) for text in text_data]
-    pickle.dump(corpus, open('../outputs/corpus.pkl', 'wb'))
-    dictionary.save('../outputs/dictionary.gensim')
+            tokens.extend(prepare_text_for_lda(x_pushift["selftext"]))
+        text_data.append((tokens, month))
+    dic = corpora.Dictionary(text_data)
+    corpuss = [dic.doc2bow(text[0]) for text in text_data]
+    pickle.dump(corpuss, open('../outputs/corpus.pkl', 'wb'))
+    dic.save('../outputs/dictionary.gensim')
     for num_of_topic in tqdm(range(start, limit, step)):
         # print(num_of_topic)
-        ldamodel = gensim.models.ldamodel.LdaModel(corpus, num_topics=num_of_topic, id2word=dictionary, passes=15)
-        perplexity_value = ldamodel.log_perplexity(corpus)
+        ldamodel = gensim.models.ldamodel.LdaModel(corpuss, num_topics=num_of_topic, id2word=dic, passes=15)
+        perplexity_value = ldamodel.log_perplexity(corpuss)
         # print('\nPerplexity: ', perplexity_value)  # a measure of how good the model is. lower the better.
         perplexity_values.append(perplexity_value)
         # Compute Coherence Score
-        coherence_model_lda = CoherenceModel(model=ldamodel, texts=text_data, dictionary=dictionary, coherence='c_v')
+        coherence_model_lda = CoherenceModel(model=ldamodel, texts=text_data, dictionary=dic, coherence='c_v')
         coherence_lda = coherence_model_lda.get_coherence()
         if coherence_lda > bst_coh:
+            second_bst_coh = bst_coh
+            second_best_num_of_topics = best_num_of_topics
+            second_best_model = best_model
             bst_coh = coherence_lda
             best_num_of_topics = num_of_topic
             best_model = ldamodel
         coherence_values.append(coherence_lda)
         # print('\nCoherence Score: ', coherence_lda)
-    best_model.save('../outputs/model{}.gensim'.format(best_num_of_topics))
+    best_model.save('../outputs/model{}_best.gensim'.format(best_num_of_topics))
     extract_plots(coherence_values, limit, perplexity_values, start, step)
-    dominant_topics(ldamodel=best_model, corpus=corpus, ids=id_list)
-    return best_model, corpus, dictionary
+    dominant_topics(ldamodel=best_model, corpus=corpuss, ids=id_list)
+    second_best_model.save('../outputs/model{}_second.gensim'.format(second_best_num_of_topics))
+    dominant_topics(ldamodel=second_best_model, corpus=corpuss, ids=id_list)
+    return best_model, corpuss, dic
+
+#
+# def data_access(source_name_, source_type_):
+#     if source_type_ == "mongo":
+#         # mycol = con_db.get_posts_from_mongodb(collection_name=source_name_)
+#         myclient = pymongo.MongoClient("mongodb+srv://shimon:d6*E5GixFv!8SLX@cluster0.vfpai.mongodb.net/test")
+#         mydb = myclient["reddit"]
+#         mycol = mydb[source_name_]
+#         data_ = mycol.find()
+#         data_ = mycol.find({})
+#     elif source_type_ == "csv":
+#         data_ = pd.read_csv("../data/{}.csv".format(source_name_))
+#         data_ = data_[data_["is_crosspostable"] == False]
+#     return data_
 
 
-def data_access(source_name_, source_type_):
-    if source_type_ == "mongo":
-        # mycol = con_db.get_posts_from_mongodb(collection_name=source_name_)
-        myclient = pymongo.MongoClient("mongodb+srv://shimon:1234@redditdata.aav2q.mongodb.net/")
-        mydb = myclient["reddit"]
-        mycol = mydb[source_name_]
-        data_ = mycol.find()
-        # data_ = mycol.find({}, {"title": 1, "selftext": 1, "subreddit": 1})
-    elif source_type_ == "csv":
-        data_ = pd.read_csv("../data/{}.csv".format(source_name_))
-        data_ = data_[data_["is_crosspostable"] == False]
-    return data_
-
-
-def dominant_topics(ldamodel, corpus, ids):
+def dominant_topics(ldamodel, corpus, ids=None):
     sent_topics_df = pd.DataFrame()
     for i, row in enumerate(ldamodel[corpus]):
         row = sorted(row, key=lambda x: (x[1]), reverse=True)
@@ -143,26 +157,63 @@ def dominant_topics(ldamodel, corpus, ids):
 
 
 def extract_plots(coherence_values, limit, perplexity_values, start, step):
+
     x = range(start, limit, step)
-    fig, axs = plt.subplots(2)
-    axs[0].plot(x, coherence_values)
+
+    # Using built-in trigonometric function we can directly plot
+    # the given cosine wave for the given angles
+    Y1 = coherence_values
+    Y2 = perplexity_values
+
+    # Initialise the subplot function using number of rows and columns
+    figure, axis = plt.subplots(2, 1)
+
+    axis[0].plot(x, Y1)
+    axis[0].set_ylabel("Coherence score")
+
+    axis[1].plot(x, Y2)
+    axis[1].set_ylabel("Perplexity score")
     plt.xlabel("Num Topics")
-    plt.ylabel("Coherence score")
-    plt.legend(("coherence_values"), loc='best')
-    axs[1].plot(x, perplexity_values)
-    plt.xlabel("Num Topics")
-    plt.ylabel("Perplexity score")
-    plt.legend(("Perplexity_values"), loc='best')
+
+
+    # Combine all the operations and display
+    # fig = plt.figure()
+    # gs = gridspec.GridSpec(2, 1)
+    # ax1 = plt.subplot(gs[0, 0])
+    # # Adds subplot 'ax' in grid 'gs' at position [x,y]
+    # ax1.set_ylabel('Coherence score')  # Add y-axis label 'Foo' to graph 'ax' (xlabel for x-axis)
+    # fig.add_subplot(ax1)  # add 'ax' to figure
+    # ax1 = fig.add_axes(coherence_values)
+    # ax1.set_ylabel("Coherence score")
+    # ax1.plot(x)
+    # ax2 = fig.add_axes(perplexity_values)
+    # ax2.set_ylabel("Perplexity score")
+    # ax1.set_xlabel("Num Topics")
+    # ax2.plot(x)
+    #
     plt.savefig("../outputs/coherence_perplxity")
+
+    # x = range(start, limit, step)
+    # fig, axs = plt.subplots(2)
+    # axs[0].plot(x, coherence_values)
+    # plt.xlabel("Num Topics", axes=axs[0])
+    # plt.ylabel("Coherence score", axes=axs[0])
+    # # plt.legend(("coherence_values"), loc='best', axes=axs[0])
+    # axs[1].plot(x, perplexity_values)
+    # plt.xlabel("Num Topics", axes=axs[1])
+    # plt.ylabel("Perplexity score", axes=axs[1])
+    # # plt.legend(("Perplexity_values"), loc='best', axes=axs[1])
+    # plt.savefig("../outputs/coherence_perplxity")
 
 
 if __name__ == "__main__":
-    flag = True  # true if the model already built
+    flag = False  # true if the model already built
     source_name, source_type = "wallstreetbets", "mongo"
     best_model_path = "../outputs/model80.gensim"
+    con_db = Con_DB()
     if flag:
         id_list = []
-        data = data_access(source_name, source_type)
+        data = con_db.get_cursor_from_mongodb(collection_name=source_name)
         # for x in tqdm(data):
         #     id_list.append(x["pushift_api"]["id"])
         lda_model = LdaModel.load(best_model_path)
@@ -172,29 +223,31 @@ if __name__ == "__main__":
         dictionary = corpora.Dictionary.load("../outputs/dictionary.gensim")
         # topics = lda_model.print_topics(num_words=4)
         # dominant_topics(ldamodel=lda_model, corpus=corpus, ids=id_list)
-        sentiment_topics = []
-        for topic_id in tqdm(range(lda_model.num_topics)):
-            topk = lda_model.show_topic(topic_id, 10)
-            topk_words = [w for w, _ in topk]
-            topic = '{}'.format(' '.join(topk_words))
-            blob = TextBlob(topic)
-            sentim = blob.sentiment.polarity
-            print(topic, ": ",sentim )
-            # Create and generate a word cloud image:
-            joined_topk_words = " ".join(topk_words)
-            wordcloud = WordCloud().generate(joined_topk_words)
-            sentiment_topics.append([topic_id, topic, sentim])
 
-            # Display the generated image:
-            plt.imshow(wordcloud, interpolation='bilinear')
-            plt.axis("off")
-            # plt.show()
-            plt.savefig("../outputs/worldcloud_{}".format(topic_id))
-        df = pd.DataFrame(data=sentiment_topics, columns=['topic_id', 'topic', 'sentim'])
-        df.to_csv("../outputs/topic_sentim.csv")
     else:
         lda_model, corpus, dictionary = topic_analysis(source_name, source_type)
 
     # Visualize the topics
-    # visualisation = pyLDAvis.gensim_models.prepare(lda_model, corpus, dictionary)
-    # pyLDAvis.save_html(visualisation, '../outputs/LDA_Visualization.html')
+    visualisation = pyLDAvis.gensim_models.prepare(lda_model, corpus, dictionary, sort_topics=False)
+    pyLDAvis.save_html(visualisation, '../outputs/LDA_Visualization.html')
+    sentiment_topics = []
+    plt.clf()
+    for topic_id in tqdm(range(lda_model.num_topics)):
+        topk = lda_model.show_topic(topic_id, 10)
+        topk_words = [w for w, _ in topk]
+        topic = '{}'.format(' '.join(topk_words))
+        blob = TextBlob(topic)
+        sentim = blob.sentiment.polarity
+        print(topic, ": ", sentim)
+        # Create and generate a word cloud image:
+        joined_topk_words = " ".join(topk_words)
+        wordcloud = WordCloud().generate(joined_topk_words)
+        sentiment_topics.append([topic_id, topic, sentim])
+
+        # Display the generated image:
+        plt.imshow(wordcloud, interpolation='bilinear')
+        plt.axis("off")
+        # plt.show()
+        plt.savefig("../outputs/worldcloud_{}".format(topic_id))
+    df = pd.DataFrame(data=sentiment_topics, columns=['topic_id', 'topic', 'sentim'])
+    df.to_csv("../outputs/topic_sentim.csv")
