@@ -49,7 +49,7 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(message)s')
     # parameters
     con_db = Con_DB()
-    for month in tqdm(range(7, 13)):
+    for month in tqdm(range(3, 7)):
         for day in tqdm(range(1, 28, 2)):
             logging.info("month: {}, day {}:".format(month, day))
             limit = 220
