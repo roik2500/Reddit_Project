@@ -29,16 +29,30 @@ class Con_DB:
         self.posts_cursor = mydb[collection_name]
         return self.posts_cursor
 
+    '''
+    :argument
+    cursor -> The object from mongo to extract the relevent data from
+    post_or_comment -> str that specify if to etract posts or comments from the cursor
+    :returns
+    post return Array that have the title and selftext
+    comment return Array that the comments separated by '..', '...' 
+    '''
+    def get_text_from_post_OR_comment(self, object, post_or_comment):
+        if post_or_comment == 'post':
+            return [object['pushift_api']['title'], object['reddit_api']['post']['selftext']]  # return array
+        elif post_or_comment == 'comment':
+            return [obj['data']['body'] for obj in object['reddit_api']['comments']]  # return array
+
     def insert_to_db(self, reddit_post):
         self.posts_cursor.insert_one(reddit_post)
 
-    def add_filed(self, data, filed_name='reddit_or_pushshift'):
+    def add_filed(self, data, filed_name='reddit_or_pushshift', collection_name="wallstreetbets"):
         '''
            This function is adding filed to post at mongoDB
            :argument filed_name: name of the field you want to add. TYPE- str
            :argument data: TYPE- str
        '''
-        posts_cursor = con_db.get_cursor_from_mongodb(collection_name="politics")
+        posts_cursor = con_db.get_cursor_from_mongodb(collection_name=collection_name)
         for post in posts_cursor.find({}):
             posts_cursor.insert_one({"_id": post["_id"]}, {"$set": {filed_name: data}})
 
@@ -56,8 +70,8 @@ class Con_DB:
         posts_cursor = self.get_cursor_from_mongodb(collection_name=collection_name)
         for post in posts_cursor.find({}):
 
-            reddit_post = post['reddit_api'][0]['data']['children'][0]['data']['selftext']
-            pushshift_post = post['pushshift_api'][0]['data']['children'][0]['data']['selftext']
+            reddit_post = post['reddit_api']['post']['selftext']
+            pushshift_post = post['pushift_api']['selftext']
 
             reddit_condition = reddit_post == '' or reddit_post == '[deleted]' \
                                or reddit_post == '[removed]'
@@ -65,14 +79,21 @@ class Con_DB:
             pushshift_condition = pushshift_post != '' and pushshift_post != '[deleted]' \
                                   and pushshift_post != '[removed]'
 
+            pushshift_removed = pushshift_post == '[removed]'
+
             if reddit_condition and pushshift_condition:
-                self.add_filed(data='pushshift')
+                self.add_filed(data='pushift_api')
+            elif pushshift_removed and not reddit_condition:
+                self.add_filed(data='reddit_api')
             else:
-                self.add_filed(data='reddit')
+                self.add_filed(data='reddit_api')
 
 
 if __name__ == '__main__':
     con_db = Con_DB()
-    # posts_cursor = con_db.get_cursor_from_mongodb(collection_name="politics")
+    posts_cursor = con_db.get_cursor_from_mongodb(collection_name="wallstreetbets")
     # con_db.reoder_mongo("wallstreetbets")
-    con_db.add_filed(filed_name='most_updated_data', data=None)
+    # con_db.add_filed(filed_name='most_updated_data', data=None)
+    for obj in posts_cursor.find({}):
+        a = con_db.get_text_from_post_OR_comment(object=obj, post_or_comment='comment')
+        print(a)

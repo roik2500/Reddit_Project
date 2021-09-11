@@ -20,27 +20,33 @@ def extract_posts_emotion_rate(posts, emotion_dict, text_filed):
     for post in posts.find({}):
         # if post['reddit_api'][0]['data']['children'][0]['data']['selftext'] == '[removed]':
 
-        reddit_api.convert_time_format(post['reddit_api'][0]['data']['children'][0]['data'])
-        year = int(datetime.strptime(post['reddit_api'][0]['data']['children'][0]['data']['created_utc'][0]
+        # reddit_api.convert_time_format(post['reddit_api'][0]['data']['children'][0]['data'])
+        # reddit_api.convert_time_format(post['reddit_api']['post'])
+        year = int(datetime.strptime(post['reddit_api']['post']['created_utc'][0]
                                       , "%Y-%m-%d").date().year)
-        month = int(datetime.strptime(post['reddit_api'][0]['data']['children'][0]['data']['created_utc'][0]
+        month = int(datetime.strptime(post['reddit_api']['post']['created_utc'][0]
                                       , "%Y-%m-%d").date().month)
         date_key = str(year) + "/" + str(month)
 
-        x = post["pushift_api"]
-        # id_list.append(x["pushift_api"]["id"])
-        tokens = x["title"]
-        if "selftext" in x and not x["selftext"].__contains__("[removed]") and x[
-            "selftext"] != "[deleted]":
-            tokens+=x["selftext"]
+        pushshift_post = post["pushift_api"]
+        # id_list.append(pushshift_post["pushift_api"]["id"])
+        # tokens = pushshift_post["title"]
+        # if "selftext" in pushshift_post and not pushshift_post["selftext"].__contains__("[removed]") and pushshift_post[
+        #     "selftext"] != "[deleted]":
+        #     tokens+=pushshift_post["selftext"]
         # text_data.append(tokens)
 
+        reddit_post = post["reddit_api"]['post']
+        tokens = reddit_post['title']
+        if "selftext" in pushshift_post and reddit_post['selftext'] == '[removed]':
+            tokens+=pushshift_post["selftext"]
+
         if date_key in emotion_dict.keys():
-            emotion_dict[date_key].append([post['reddit_api'][0]['data']['children'][0]['data']['id'],
+            emotion_dict[date_key].append([post['reddit_api']['post']['id'],
                                 # te.get_emotion(post['reddit_api'][0]['data']['children'][0]['data'][text_filed])])
                                 te.get_emotion(tokens)])
         else:
-            emotion_dict[date_key] = [[post['reddit_api'][0]['data']['children'][0]['data']['id'],
+            emotion_dict[date_key] = [[post['reddit_api']['post']['id'],
                                # te.get_emotion(post['reddit_api'][0]['data']['children'][0]['data'][text_filed])]]
                                te.get_emotion(tokens)]]
 
@@ -83,7 +89,7 @@ emotion_avg_in_month = ["Angry", "Fear", "Happy", "Sad", "Surprise"]
 emotion_posts_avg_of_subreddit = {"Angry" : {}, "Fear": {},
                                     "Happy" : {}, "Sad": {}, "Surprise" : {}}
 
-posts = con_DB.get_cursor_from_mongodb(db_name="reddit", collection_name="politics")
+posts = con_DB.get_cursor_from_mongodb(db_name="reddit", collection_name="wallstreetbets")
 
 print("extracte emotion rate")
 extract_posts_emotion_rate(posts, emotion_dict, 'title')
@@ -98,7 +104,7 @@ print("plot")
 emotion_plot_for_posts_in_subreddit(emotion_posts_avg_of_subreddit,  '%Y/%m')
 
 print("write to disk")
-with open('C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\emotion_politics_removed.json', 'w') as fp:
+with open('C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\emotion_wallstreetbets.json', 'w') as fp:
     json.dump(emotion_posts_avg_of_subreddit, fp)
 
 
