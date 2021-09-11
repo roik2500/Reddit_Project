@@ -8,6 +8,7 @@ load_dotenv()
 This class are responsible on the connection to our DB.
 '''
 
+#AUTH_DB="mongodb+srv://roi:1234@redditdata.aav2q.mongodb.net/"
 
 class Con_DB:
 
