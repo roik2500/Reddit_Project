@@ -59,10 +59,12 @@ class Sentiment:
     and the function updating the self variables.
     :argument post: specific post from db 
     :argument remove_all_NotRemove - indicate the type of the posts. (Removed/All/NotRemoved)
+    :argument Month_Or_Year - iteration posts per month or per year. 
+                              month - x_values = days of the posts
+                              year - x_values = month of the posts
     '''
-    def update_sentiment_values(self, post,remove_all_NotRemove):
+    def update_sentiment_values(self, post,remove_all_NotRemove,Month_Or_Year):
         keys = {}
-
         if remove_all_NotRemove == "Removed":
             if post['reddit_api']['post']['selftext'] == "[removed]":
                 keys = post['pushift_api'].keys()
@@ -100,13 +102,16 @@ class Sentiment:
         else:
             self.negative += 1
 
-        month = int(datetime.datetime.strptime(post['pushift_api']['created_utc'][0], "%Y-%m-%d").date().month)
+        if Month_Or_Year == "month":
+            x_value = int(datetime.datetime.strptime(post['pushift_api']['created_utc'][0], "%Y-%m-%d").date().month)
+        else:
+            x_value = int(datetime.datetime.strptime(post['pushift_api']['created_utc'][0], "%Y-%m-%d").date().day)
 
         # creating a list of all the text(title) per month
-        if month not in self.text_per_month.keys():
-            self.text_per_month[month] = [text]
+        if x_value not in self.text_per_month.keys():
+            self.text_per_month[x_value] = [text]
         else:
-            self.text_per_month[month].append(text)
+            self.text_per_month[x_value].append(text)
 
 
 
