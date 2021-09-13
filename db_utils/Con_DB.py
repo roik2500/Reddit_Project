@@ -2,6 +2,7 @@ import pymongo
 import os
 from dotenv import load_dotenv
 from pprint import pprint
+import  pandas as pd
 load_dotenv()
 
 '''
@@ -117,6 +118,19 @@ class Con_DB:
                 elif category == "All":
                     posts_to_return.append(post)
         return posts_to_return
+
+    '''
+       This function reading Data from CSV file
+       :argument path - path to csv file in this computer
+       :return rows from csv
+       '''
+
+    def read_fromCSV(self, path):
+        df = pd.read_csv(path)
+        return df
+    # f = open(path,encoding='UTF8')
+    # csv_reader = csv.reader(f)
+    # return csv_reader
 
 if __name__ == '__main__':
     con_db = Con_DB()

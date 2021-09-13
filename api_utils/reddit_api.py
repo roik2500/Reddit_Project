@@ -36,7 +36,6 @@ from dotenv import load_dotenv
 import datetime
 from api_utils.PushshiftApi import PushshiftApi
 
-
 load_dotenv()
 
 
@@ -57,7 +56,7 @@ class reddit_api:
             int(comment_or_post['created_utc'])).isoformat().split(
             "T")
 
-    async def extract_reddit_data_parallel(self,sub):
+    async def extract_reddit_data_parallel(self, sub):
         url = sub["permalink"]
         self.pushshift.convert_time_format(sub)
         post_from_reddit = self.reddit.request('GET', url)
@@ -65,15 +64,16 @@ class reddit_api:
         self.convert_time_format(post_from_reddit[0]['data']['children'][0]['data'])
 
         relevent_data_post_from_reddit = \
-            {"post" : post_from_reddit[0]['data']['children'][0]['data'],
-             "comments" : post_from_reddit[1]['data']['children']
+            {"post": post_from_reddit[0]['data']['children'][0]['data'],
+             "comments": post_from_reddit[1]['data']['children']
              }
 
         final = {
-                "post_id" : post_from_reddit[0]['data']['children'][0]['data']['id'],
-                "reddit_api": relevent_data_post_from_reddit, "pushift_api": sub
-                 }
+            "post_id": post_from_reddit[0]['data']['children'][0]['data']['id'],
+            "reddit_api": relevent_data_post_from_reddit, "pushift_api": sub
+        }
         return final
+
 
 if __name__ == '__main__':
     reddit = reddit_api()
