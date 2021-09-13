@@ -49,10 +49,10 @@ if __name__ == '__main__':
     logging.basicConfig(format='%(asctime)s %(message)s')
     # parameters
     con_db = Con_DB()
-    for month in tqdm(range(3, 7)):
+    for month in tqdm(range(1, 13)):
         for day in tqdm(range(1, 28, 2)):
             logging.info("month: {}, day {}:".format(month, day))
-            limit = 220
+            limit = 20
             start_time = int(datetime.datetime(2020, month, day).timestamp())
             end_time = int(datetime.datetime(2020, month, day + 1).timestamp())
             sub_reddit = 'wallstreetbets'

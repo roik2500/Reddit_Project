@@ -39,7 +39,7 @@ class Con_DB:
     '''
     def get_text_from_post_OR_comment(self, object, post_or_comment):
         if post_or_comment == 'post':
-            return [object['pushift_api']['title'], object['reddit_api']['post']['selftext']]  # return array
+            return [object['pushift_api']['title'], object['pushift_api']['selftext']]  # return array
         elif post_or_comment == 'comment':
             return [obj['data']['body'] for obj in object['reddit_api']['comments']]  # return array
 
