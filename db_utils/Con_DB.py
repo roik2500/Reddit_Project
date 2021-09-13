@@ -1,6 +1,9 @@
+import csv
+
 import pymongo
 import os
 from dotenv import load_dotenv
+import  pandas as pd
 
 load_dotenv()
 
@@ -8,6 +11,7 @@ load_dotenv()
 This class are responsible on the connection to our DB.
 '''
 
+#AUTH_DB="mongodb+srv://roi:1234@redditdata.aav2q.mongodb.net/"
 
 class Con_DB:
 
@@ -89,11 +93,26 @@ class Con_DB:
                 self.add_filed(data='reddit_api')
 
 
-if __name__ == '__main__':
-    con_db = Con_DB()
-    posts_cursor = con_db.get_cursor_from_mongodb(collection_name="wallstreetbets")
-    # con_db.reoder_mongo("wallstreetbets")
-    # con_db.add_filed(filed_name='most_updated_data', data=None)
-    for obj in posts_cursor.find({}):
-        a = con_db.get_text_from_post_OR_comment(object=obj, post_or_comment='comment')
-        print(a)
+
+    '''
+    This function reading Data from CSV file
+    :argument path - path to csv file in this computer
+    :return rows from csv
+    '''
+    def read_fromCSV(self,path):
+        df = pd.read_csv(path)
+        return df
+       # f = open(path,encoding='UTF8')
+       # csv_reader = csv.reader(f)
+       # return csv_reader
+
+
+
+# if __name__ == '__main__':
+#     con_db = Con_DB()
+#     posts_cursor = con_db.get_cursor_from_mongodb(collection_name="wallstreetbets")
+#     # con_db.reoder_mongo("wallstreetbets")
+#     # con_db.add_filed(filed_name='most_updated_data', data=None)
+#     for obj in posts_cursor.find({}):
+#         a = con_db.get_text_from_post_OR_comment(object=obj, post_or_comment='comment')
+#         print(a)

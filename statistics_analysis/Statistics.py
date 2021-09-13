@@ -47,6 +47,6 @@ class Statistic:
 
         print("Video Precentage: " + str(round((self.num_of_video / self.numOfPosts) * 100, 4)) + "%")
         print("Image Precentage: " + str(round((self.num_of_img / self.numOfPosts) * 100, 4)) + "%")
-        print("sub-reddit: politics\n Total Posts: 5000\n Year: 2020")
+        #print("sub-reddit: politics\n Total Posts: 5000\n Year: 2020")
         return {'num_of_video':self.num_of_video,'num_of_img':self.num_of_img,'numOfPosts':self.numOfPosts}
 

@@ -58,17 +58,31 @@ class Sentiment:
     This function is called from the main loop in Main_test file
     and the function updating the self variables.
     :argument post: specific post from db 
+    :argument remove_all_NotRemove - indicate the type of the posts. (Removed/All/NotRemoved)
+    :argument Month_Or_Year - iteration posts per month or per year. 
+                              month - x_values = days of the posts
+                              year - x_values = month of the posts
     '''
-    def update_sentiment_values(self, post):
-        # data = []
-        #text_per_month = {}
-        #positive, negative, neutral = 0, 0, 0
-        # The total amount of the post by one year
-        #total_posts = 0
-       # for x in tqdm(posts.find({})):
+    def update_sentiment_values(self, post,remove_all_NotRemove,Month_Or_Year):
+        keys = {}
+        if remove_all_NotRemove == "Removed":
+            if post['reddit_api']['post']['selftext'] == "[removed]":
+                keys = post['pushift_api'].keys()
+                self.total_posts += 1
+            else: return
 
-        self.total_posts += 1
-        keys = post['pushift_api'].keys()
+        elif remove_all_NotRemove == "NotRemoved":
+            if post['reddit_api']['post']['selftext'] != "[removed]":
+                keys = post['pushift_api'].keys()
+                self.total_posts += 1
+            else: return
+
+        elif remove_all_NotRemove == "All":
+            keys = post['pushift_api'].keys()
+            self.total_posts += 1
+
+        else: return
+
         text = ""
 
         if 'selftext' in keys:
@@ -88,22 +102,27 @@ class Sentiment:
         else:
             self.negative += 1
 
-        month = int(datetime.datetime.strptime(post['pushift_api']['created_utc'][0], "%Y-%m-%d").date().month)
+        if Month_Or_Year == "month":
+            x_value = int(datetime.datetime.strptime(post['pushift_api']['created_utc'][0], "%Y-%m-%d").date().month)
+        else:
+            x_value = int(datetime.datetime.strptime(post['pushift_api']['created_utc'][0], "%Y-%m-%d").date().day)
 
         # creating a list of all the text(title) per month
-        if month not in self.text_per_month.keys():
-            self.text_per_month[month] = [text]
+        if x_value not in self.text_per_month.keys():
+            self.text_per_month[x_value] = [text]
         else:
-            self.text_per_month[month].append(text)
-        # data.append([month, temp])
+            self.text_per_month[x_value].append(text)
 
 
 
     '''
     This function drawing a graph of the sentiment by the self variables.
     using with plt.plot
+    :argument kind_of_sentiment - could be polarity or subjectivity
+    :argument subreddit - Name of the sub-reddit
+    :argument type - indicate if this a removed post or not. (Removed/All/Not Removed)
     '''
-    def draw_sentiment_time(self):
+    def draw_sentiment_time(self,kind_of_sentiment,subreddit,type):
         # calculate the % of positive, negative and neutral
         positive = (self.positive / self.total_posts) * 100
         negative = (self.negative / self.total_posts) * 100
@@ -113,20 +132,31 @@ class Sentiment:
         afn = Afinn()
         for text in tqdm(self.text_per_month.values()):
             #scores = sum([afn.score(article) for article in text]) / self.total_posts
-            scores = sum([self.get_polarity(article) for article in text]) / self.total_posts
+            if kind_of_sentiment == "polarity":
+                temp = self.get_polarity(text[0])
+                for article in text:
+                    t = self.get_polarity(article)
+                scores = sum([self.get_polarity(article) for article in text]) / self.total_posts
+
+            if kind_of_sentiment == "subjectivity":
+                scores = sum([self.get_subjectivity(article) for article in text]) / self.total_posts
+
             y_value.append(scores)
 
         self.text_per_month = dict(sorted(self.text_per_month.items(), key=lambda item: item[0]))
 
-        print("text_per_month: {}".format(self.text_per_month))
-        print("Sentiment\polarity: {}".format(y_value))
+        #print("text_per_month: {}".format(self.text_per_month))
+        #print("Sentiment\polarity: {}".format(y_value))
+
+        x = max(list(self.text_per_month.keys()))+1
+        y = max(y_value)
 
         plt.plot(list(self.text_per_month.keys()), y_value, label="Year: 2020")
-        plt.text(6, 0.00,
-                 "Sub-Reddit: Politics\n Total Post: {}\n Year: 2020\n Positive: {}%\n Negative: {}%\n Neutral: {}%".format(
-                     self.total_posts,round(positive,2), round(negative,2), round(neutral,2)))
+        plt.text(x,y,
+                 "Sub-Reddit: {}\n Type of posts: {}\n Total Post: {}\n Year: 2020\n Positive: {}%\n Negative: {}%\n Neutral: {}%".format(
+                     subreddit,type,self.total_posts,round(positive,2), round(negative,2), round(neutral,2)))
         plt.xlabel("Month")
-        plt.ylabel("Sentiment (polarity)")
+        plt.ylabel("Sentiment ({})".format(kind_of_sentiment))
         return plt.show()
 
 
