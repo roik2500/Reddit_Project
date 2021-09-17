@@ -1,17 +1,14 @@
-import csv
-
 import pymongo
 import os
 from dotenv import load_dotenv
+from pprint import pprint
 import  pandas as pd
-
 load_dotenv()
 
 '''
 This class are responsible on the connection to our DB.
 '''
 
-#AUTH_DB="mongodb+srv://roi:1234@redditdata.aav2q.mongodb.net/"
 
 class Con_DB:
 
@@ -43,9 +40,11 @@ class Con_DB:
     '''
     def get_text_from_post_OR_comment(self, object, post_or_comment):
         if post_or_comment == 'post':
-            return [object['pushift_api']['title'], object['pushift_api']['selftext']]  # return array
+            if 'selftext' in object['pushift_api'].keys():
+                return [object['pushift_api']['title'], object['pushift_api']['selftext'], object['pushift_api']['created_utc'][0], object['pushift_api']['id']]  # return array
+            return [object['pushift_api']['title'], object['reddit_api']['post']['selftext'], object['reddit_api']['post']['created_utc'][0], object['reddit_api']['post']['id']]  # return array
         elif post_or_comment == 'comment':
-            return [obj['data']['body'] for obj in object['reddit_api']['comments']]  # return array
+            return [(obj['data']['body'], obj['data']['created_utc'][0], obj['data']['id'] ) for obj in object['reddit_api']['comments']]  # return array
 
     def insert_to_db(self, reddit_post):
         self.posts_cursor.insert_one(reddit_post)
@@ -70,7 +69,7 @@ class Con_DB:
             self.myclient.reddit_api.save({"_id": post['_id']}, {"$set": {"reddit_api": [{0: relevent_data}]}})
             relevent_data.clear()
 
-    def chose_relevent_data(self, collection_name):
+    def chose_relevant_data(self, collection_name):
         posts_cursor = self.get_cursor_from_mongodb(collection_name=collection_name)
         for post in posts_cursor.find({}):
 
@@ -92,27 +91,55 @@ class Con_DB:
             else:
                 self.add_filed(data='reddit_api')
 
+    def get_specific_items_by_post_ids(self, ids_list):
+        cursor = self.posts_cursor.find(
+            {u'pushift_api.id': {'$in': ids_list}}
+        )
+        # return cursor
+        text_and_date_list = []
+        for post in cursor:
+            text_and_date_list.append(self.get_text_from_post_OR_comment(post, post_or_comment='post'))
+        return text_and_date_list  # [title , selftext]
 
+    ''' return posts by category'''
+    def get_data_categories(self, category, collection_name):
+        posts = self.get_cursor_from_mongodb(db_name="reddit", collection_name=collection_name)
+        posts_to_return = []
+        for post in posts.find({}):
+            if 'selftext' in post['pushift_api'].keys():
+                if category == "Removed":
+                    if post['pushift_api']['selftext'] == "[removed]":
+                        posts_to_return.append(post)
+
+                elif category == "NotRemoved":
+                    if post['reddit_api']['post']['selftext'] != "[removed]":
+                        posts_to_return.append(post)
+
+                elif category == "All":
+                    posts_to_return.append(post)
+        return posts_to_return
 
     '''
-    This function reading Data from CSV file
-    :argument path - path to csv file in this computer
-    :return rows from csv
-    '''
-    def read_fromCSV(self,path):
+       This function reading Data from CSV file
+       :argument path - path to csv file in this computer
+       :return rows from csv
+       '''
+
+    def read_fromCSV(self, path):
         df = pd.read_csv(path)
         return df
-       # f = open(path,encoding='UTF8')
-       # csv_reader = csv.reader(f)
-       # return csv_reader
+    # f = open(path,encoding='UTF8')
+    # csv_reader = csv.reader(f)
+    # return csv_reader
 
+if __name__ == '__main__':
+    con_db = Con_DB()
+    posts_cursor = con_db.get_cursor_from_mongodb(collection_name="wallstreetbets")
+    # con_db.reoder_mongo("wallstreetbets")
+    # con_db.add_filed(filed_name='most_updated_data', data=None)
+    # for obj in posts_cursor.find({}):
+    #     a = con_db.get_text_from_post_OR_comment(object=obj, post_or_comment='comment')
+    #     print(a)
 
+    pprint(con_db.get_specific_items_by_post_ids(ids_list=['hjac6l', 'hjadxl', 'hjaa0v']))
 
-# if __name__ == '__main__':
-#     con_db = Con_DB()
-#     posts_cursor = con_db.get_cursor_from_mongodb(collection_name="wallstreetbets")
-#     # con_db.reoder_mongo("wallstreetbets")
-#     # con_db.add_filed(filed_name='most_updated_data', data=None)
-#     for obj in posts_cursor.find({}):
-#         a = con_db.get_text_from_post_OR_comment(object=obj, post_or_comment='comment')
-#         print(a)
