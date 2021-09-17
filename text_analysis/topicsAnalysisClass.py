@@ -2,7 +2,6 @@ import logging
 import os
 import re
 import time
-
 from wordcloud import WordCloud
 import pandas as pd
 import spacy
@@ -20,10 +19,14 @@ import pyLDAvis
 from textblob import TextBlob
 from tqdm import tqdm
 from db_utils.Con_DB import Con_DB
+from dotenv import load_dotenv
+import pathlib
+
+load_dotenv()
 
 spacy.load('en_core_web_sm')
-nltk.download('wordnet')
-nltk.download('stopwords')
+nltk.download('wordnet', quiet=True)
+nltk.download('stopwords', quiet=True)
 # logging.getLogger().setLevel(logging.INFO)
 logging.basicConfig(format='%(asctime)s %(message)s')
 
@@ -73,59 +76,128 @@ def convert_tuples_to_dict(tup):
 
 
 class TopicsAnalysis:
-    def __init__(self, src_name):
-        self.limit = 90
+    def __init__(self, src_name, rmovd_flag, prep_data):
+        self.limit = 11
         self.start = 2
-        self.step = 6
+        self.step = 5
+        self.removed_flag = rmovd_flag
+        self.subreddit = src_name
+        self.dir = os.getenv('OUTPUTS_DIR')+src_name
+        if self.removed_flag:
+            self.dir += "/all"
+        else:
+            self.dir += "/removed"
+        pathlib.Path(self.dir).mkdir(parents=True, exist_ok=True)
         self.perplexity_values = []
         self.coherence_values = []
         self.con_db = Con_DB()
         # bring data from source
-        self.data_cursor = self.con_db.get_cursor_from_mongodb(collection_name=src_name).find({})
-        self.corpus_dict = {}
-        self.dictionary_dict = {}
-        self.corpus, self.dictionary, self.id_list, self.text_data = self.prepare_data()
+        if prep_data:
+            self.data_cursor = self.con_db.get_cursor_from_mongodb(collection_name=src_name).find({})
+            self.prepare_data()
+        self.corpus = 0
+        self.dictionary = 0
+        self.id_list = self.load_pickle("id_lst")
+        self.text_data = self.load_pickle("text_data")
         self.id_list_month = convert_tuples_to_dict(self.id_list)
 
     # def prepare_data(self):
-    #     id_lst, text_data = [], {}
-    #     for x in tqdm(self.data_cursor):
-    #         x_reddit = x["reddit_api"]["post"]
-    #         month = int(x_reddit["created_utc"][0].split('-')[1])
-    #         id_lst.append((x["post_id"], month))
-    #     infile = open("../outputs/corpus.pkl", 'rb')
+    #     # for x in tqdm(self.data_cursor):
+    #     #     x_reddit = x["reddit_api"]["post"]
+    #     #     month = int(x_reddit["created_utc"][0].split('-')[1])
+    #     #     id_lst.append((x["post_id"], month))
+    #     # pickle.dump(id_lst, open(self.dir+'/id_lst.pkl', 'wb'))
+    #     id_lst = self.load_id_list()
+    #     infile = open(self.dir+"/corpus.pkl", 'rb')
     #     corpus = pickle.load(infile)
     #     infile.close()
-    #     dic = corpora.Dictionary.load("../outputs/dictionary.gensim")
-    #     return corpus, dic, id_lst, text_data
+    #     dic = corpora.Dictionary.load(self.dir+"/dictionary.gensim")
+    #     for j, k in id_lst:
+    #         self.load_dic_cor(k)
+    #     return corpus, dic
+
+    def load_dic_cor(self, k):
+        self.dictionary = corpora.Dictionary.load(self.dir + "/{}/dictionary.gensim".format(k))
+        infile = open(self.dir + "/{}/corpus.pkl".format(k), 'rb')
+        self.corpus = pickle.load(infile)
+        infile.close()
+
+    def load_pickle(self, file_name):
+        infile = open(self.dir + "/{}.pkl".format(file_name), 'rb')
+        file = pickle.load(infile)
+        infile.close()
+        return file
 
     def prepare_data(self):
         id_lst, text_data = [], {}
         counter = 0
         for x in tqdm(self.data_cursor):
-            # if counter == 5000:
-            #     break
+            if counter == 100:
+                break
             x_reddit = x["reddit_api"]["post"]
             x_pushift = x["pushift_api"]
-            # if "selftext" in x_reddit and x_reddit["selftext"].__contains__("[removed]"):
-            month = int(x_reddit["created_utc"][0].split('-')[1])
-            id_lst.append((x["post_id"], month))
-            tokens = prepare_text_for_lda(x_pushift["title"])
-            if "selftext" in x_pushift and not x_pushift["selftext"].__contains__("[removed]") and \
-                    x_pushift["selftext"] != "[deleted]":
-                tokens.extend(prepare_text_for_lda(x_pushift["selftext"]))
-            text_data.setdefault(month, []).append(tokens)
-            # text_data[month].append(tokens)
-            counter += 1
+            if self.removed_flag or ("selftext" in x_reddit and x_reddit["selftext"].__contains__("[removed]")):
+                month = int(x_reddit["created_utc"][0].split('-')[1])
+                id_lst.append((x["post_id"], month))
+                tokens = prepare_text_for_lda(x_pushift["title"])
+                if "selftext" in x_pushift and not x_pushift["selftext"].__contains__("[removed]") and \
+                        x_pushift["selftext"] != "[deleted]":
+                    tokens.extend(prepare_text_for_lda(x_pushift["selftext"]))
+                text_data.setdefault(month, []).append(tokens)
+                # text_data[month].append(tokens)
+                counter += 1
+        pickle.dump(id_lst, open(self.dir+'/id_lst.pkl', 'wb'))
+        pickle.dump(text_data, open(self.dir+'/text_data.pkl', 'wb'))
         for k in text_data:
-            self.dictionary_dict[k] = corpora.Dictionary(text_data[k])
-        for k in text_data:
-            self.corpus_dict[k] = [self.dictionary_dict[k].doc2bow(text) for text in text_data[k]]
+            directory = self.dir+"/{}".format(k)
+            pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
+            # if not os.path.exists(directory):
+            #     os.mkdir(directory)
+            dic = corpora.Dictionary(text_data[k])
+            dic.save('{}/dictionary.gensim'.format(directory))
+            corpus = [dic.doc2bow(text) for text in text_data[k]]
+            pickle.dump(corpus, open('{}/corpus.pkl'.format(directory), 'wb'))
+        directory = self.dir + "/general"
+        pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
+        # if not os.path.exists(directory):
+        #     os.mkdir(directory)
         dic = corpora.Dictionary(list(text_data.values())[0])
         corpus = [dic.doc2bow(text) for txt_data in list(text_data.values()) for text in txt_data]
-        pickle.dump(corpus, open('../outputs/corpus.pkl', 'wb'))
-        dic.save('../outputs/dictionary.gensim')
-        return corpus, dic, id_lst, text_data
+        pickle.dump(corpus, open(directory+'/corpus.pkl', 'wb'))
+        dic.save(directory+'/dictionary.gensim')
+        # return corpus, dic, id_lst, text_data
+    # def prepare_data(self):
+    #     id_lst, text_data = [], {}
+    #     counter = 0
+    #     for x in tqdm(self.data_cursor):
+    #         if counter == 100:
+    #             break
+    #         x_reddit = x["reddit_api"]["post"]
+    #         x_pushift = x["pushift_api"]
+    #         if "selftext" in x_reddit and x_reddit["selftext"].__contains__("[removed]"):
+    #             month = int(x_reddit["created_utc"][0].split('-')[1])
+    #             id_lst.append((x["post_id"], month))
+    #             tokens = prepare_text_for_lda(x_pushift["title"])
+    #             if "selftext" in x_pushift and not x_pushift["selftext"].__contains__("[removed]") and \
+    #                     x_pushift["selftext"] != "[deleted]":
+    #                 tokens.extend(prepare_text_for_lda(x_pushift["selftext"]))
+    #             text_data.setdefault(month, []).append(tokens)
+    #             # text_data[month].append(tokens)
+    #         counter += 1
+    #     pickle.dump(id_lst, open(self.dir+'/id_lst.pkl', 'wb'))
+    #     for k in text_data:
+    #         directory = self.dir+"/{}".format(k)
+    #         if not os.path.exists(directory):
+    #             os.mkdir(directory)
+    #         self.dictionary_dict[k] = corpora.Dictionary(text_data[k])
+    #         self.dictionary_dict[k].save(self.dir+'/{}/dictionary.gensim'.format(k))
+    #         self.corpus_dict[k] = [self.dictionary_dict[k].doc2bow(text) for text in text_data[k]]
+    #         pickle.dump(self.corpus_dict[k], open(self.dir+'/{}/corpus.pkl'.format(k), 'wb'))
+    #     dic = corpora.Dictionary(list(text_data.values())[0])
+    #     corpus = [dic.doc2bow(text) for txt_data in list(text_data.values()) for text in txt_data]
+    #     pickle.dump(corpus, open(self.dir+'/corpus.pkl', 'wb'))
+    #     dic.save(self.dir+'/dictionary.gensim')
+    #     return corpus, dic, id_lst, text_data
 
     def topics_exp(self, text_data, month_name):
         self.perplexity_values = []
@@ -148,30 +220,37 @@ class TopicsAnalysis:
                 second_best_num_of_topics = num_of_topic
                 second_best_model = ldamodel
                 second_best_coh = coherence_lda
-        directory = "../outputs/{}".format(month_name)
-        if not os.path.exists(directory):
-            os.mkdir(directory)
+        best_directory = self.dir+"/{}/best".format(month_name)
+        pathlib.Path(best_directory).mkdir(parents=True, exist_ok=True)
+        # if not os.path.exists(best_directory):
+        #     os.mkdir(best_directory)
+        second_directory = self.dir+"/{}/second_best".format(month_name)
+        pathlib.Path(second_directory).mkdir(parents=True, exist_ok=True)
+        # if not os.path.exists(second_directory):
+        #     os.mkdir(second_directory)
         self.extract_plots(month_name)
         # if type(second_best_model) == int:
         #     print(month_name, self.coherence_values)
         # else:
         second_best_model.save(
-            '../outputs/{}/model{}_second_{}.gensim'.format(month_name, second_best_num_of_topics, month_name))
+            '{}/model_{}topc_second_{}.gensim'.format(second_directory, second_best_num_of_topics, month_name))
         # if type(best_model) == int:
         #     print(month_name, self.coherence_values)
         # else:
-        best_model.save('../outputs/{}/model{}_best_{}.gensim'.format(month_name, best_num_of_topics, month_name))
+        best_model.save('{}/model_{}topc_best_{}.gensim'.format(best_directory, best_num_of_topics, month_name))
         return best_model, second_best_model
 
     def create_topics_model(self, num_of_topic, text_data, month):
         # print(num_of_topic)
         corp = 0
-        if month == "general":
-            corp = self.corpus
-            dic = self.dictionary
-        else:
-            corp = self.corpus_dict[month]
-            dic = self.dictionary_dict[month]
+        corp = self.corpus
+        dic = self.dictionary
+        # if month == "general":
+        #     corp = self.corpus
+        #     dic = self.dictionary
+        # else:
+        #     corp = self.corpus_dict[month]
+        #     dic = self.dictionary_dict[month]
         ldamodel = gensim.models.ldamodel.LdaModel(corpus=corp, num_topics=num_of_topic, id2word=dic, passes=15)
         perplexity_value = ldamodel.log_perplexity(corp)
         # Compute Coherence Score
@@ -181,11 +260,13 @@ class TopicsAnalysis:
 
     def dominant_topics(self, ldamodel, month, ids=None):
         sent_topics_df = pd.DataFrame()
-        month_name_model = month.split('_')[0]
-        if month_name_model == "general":
-            corp = self.corpus
-        else:
-            corp = self.corpus_dict[month_name_model]
+        month_name_model, best_second = month.split('-')
+        corp = self.corpus
+        # if month_name_model == "general":
+        #     corp = self.corpus
+        # else:
+        #     month_name_model = int(month.split('_')[0])
+        #     corp = self.corpus_dict[month_name_model]
         for i, row in enumerate(ldamodel[corp]):
             row = sorted(row, key=lambda x: (x[1]), reverse=True)
             for j, (topic_num, prop_topic) in enumerate(row):
@@ -204,7 +285,7 @@ class TopicsAnalysis:
         ] if len(sent_topics_df.columns) == 5 else ['Dominant_Topic', 'Topic_Perc_Contrib', 'Keywords', 'post_id']
 
         sent_topics_df = sent_topics_df.reset_index()
-        sent_topics_df.to_csv("../outputs/{}/document_topic_table_{}.csv".format(month.split('_')[0], month))
+        sent_topics_df.to_csv(self.dir+"/{}/{}/document_topic_table_{}.csv".format(month_name_model, best_second, month))
         print(sent_topics_df.head(15))
 
     def extract_plots(self, month_name):
@@ -220,23 +301,26 @@ class TopicsAnalysis:
         axis[1].plot(x, Y2)
         axis[1].set_ylabel("Perplexity score")
         plt.xlabel("Num Topics")
-        plt.savefig("../outputs/{}/coherence_perplxity".format(month_name))
+        plt.savefig(self.dir+"/{}/coherence_perplxity".format(month_name))
 
     def use_model(self, model, ids, mod_name):
-        corp = 0
-        dic = 0
-        month_name_model = mod_name.split('_')[0]
-        if month_name_model == "general":
-            corp = self.corpus
-            dic = self.dictionary
-        else:
-            corp = self.corpus_dict[month_name_model]
-            dic = self.dictionary_dict[month_name_model]
+        month_name_model, best_second = mod_name.split('-')
+        corp = self.corpus
+        dic = self.dictionary
+        # if month_name_model == "general":
+        #     corp = self.corpus
+        #     dic = self.dictionary
+        # else:
+        #     month_name_model = int(mod_name.split('_')[0])
+        #     corp = self.corpus_dict[month_name_model]
+        #     dic = self.dictionary_dict[month_name_model]
         self.dominant_topics(ldamodel=model, month=mod_name, ids=ids)
         # Visualize the topics
-        model_month_name = mod_name.split('_')[0]
         visualisation = pyLDAvis.gensim_models.prepare(model, corp, dic, sort_topics=False)
-        pyLDAvis.save_html(visualisation, '../outputs/{}/LDA_Visualization_{}.html'.format(model_month_name, mod_name))
+        try:
+            pyLDAvis.save_html(visualisation, self.dir+'/{}/{}/LDA_Visualization_{}.html'.format(month_name_model, best_second, mod_name))
+        except TypeError:
+            print(mod_name)
         sentiment_topics = []
         plt.clf()
         for topic_id in tqdm(range(model.num_topics)):
@@ -255,52 +339,72 @@ class TopicsAnalysis:
             plt.axis("off")
             plt.title("topic #{} from {} with {} topics".format(topic_id, mod_name, model.num_topics))
             # plt.show()
-            plt.savefig("../outputs/{}/{}_worldcloud_{}".format(model_month_name, mod_name, topic_id))
+            w_c_dir = self.dir+"/{}/{}/worldcloud".format(month_name_model, best_second)
+            pathlib.Path(w_c_dir).mkdir(parents=True, exist_ok=True)
+            # if not os.path.exists(w_c_dir):
+            #     os.mkdir(w_c_dir)
+            plt.savefig(w_c_dir+"/{}_worldcloud_{}".format(mod_name, topic_id))
         df = pd.DataFrame(data=sentiment_topics, columns=['topic_id', 'topic', 'sentim'])
-        df.to_csv("../outputs/{}/topic_sentim_{}.csv".format(model_month_name, mod_name))
+        df.to_csv(self.dir+"/{}/{}/topic_sentim_{}.csv".format(month_name_model, best_second, mod_name))
+
+    def load_models(self, k):
+        modls = []
+        for root, dirs, files in os.walk(self.dir+"/{}/".format(k)):
+            for file in files:
+                if regex_lda.match(file):
+                    modls.append(LdaModel.load('{}/{}'.format(root, file)))
+        return modls
+
+
+def run_model(key, id_lst, txt_data):
+    topics.load_dic_cor(str(key))
+    if prepare_data:
+        models = topics.topics_exp(txt_data, key)
+    else:
+        models = topics.load_models(key)
+    logging.info("{} topics model using".format(key))
+    topics.use_model(models[0], id_lst, str(key) + '-best')
+    topics.use_model(models[1], id_lst, str(key) + '-second_best')
+# topics.id_list_month
 
 
 if __name__ == "__main__":
-    # regex_lda = re.compile('(.*gensim$)')
+    regex_lda = re.compile('(model*.*gensim$)')
     source_name, source_type = "wallstreetbets", "mongo"
-    topics = TopicsAnalysis(source_name)
-    models = {}
-    flag = False  # true if the model already built
-    source_name, source_type = "wallstreetbets", "mongo"
-    # best_model_path = "../outputs/model80.gensim"
-    # if flag:
-    #     id_lst = []
-    #     data = topics.con_db.get_cursor_from_mongodb(collection_name=source_name)
-    #     # for x in tqdm(data):
-    #     #     id_list.append(x["pushift_api"]["id"])
-    #     lda_model = LdaModel.load(best_model_path)
-    #     infile = open("../outputs/corpus.pkl", 'rb')
-    #     corpus = pickle.load(infile)
-    #     infile.close()
-    #     dictionary = corpora.Dictionary.load("../outputs/dictionary.gensim")
-    #     # topics = lda_model.print_topics(num_words=4)
-    #     # dominant_topics(ldamodel=lda_model, corpus=corpus, ids=id_list)
-    #
-    # else:
-    models["general"] = topics.topics_exp(list(topics.text_data.values())[0], "general")
-    for month_key in tqdm(topics.id_list_month):
-        logging.info("{} topics model build".format(month_key))
-        models[month_key] = topics.topics_exp(topics.text_data[month_key], month_key)
-    # models["general"] = []
-    # for root, dirs, files in os.walk("../outputs/general/"):
-    #     for file in files:
-    #         if regex_lda.match(file):
-    #             models["general"].append(LdaModel.load("../outputs/general/"+file))
+    prepare_data = True
+    for i in range(2):
+        removed_flag = i  # if True its all data, if False its only the removed
+        topics = TopicsAnalysis(source_name, removed_flag, prepare_data)
+        # topics.load_dic_cor("general")
+        # if prepare_data:
+        #     models = topics.topics_exp(list(topics.text_data.values())[0], "general")
+        # else:
+        #     models = topics.load_models("general")
+        # topics.use_model(models[0], topics.id_list, 'general-best')
+        # topics.use_model(models[1], topics.id_list, 'general-second_best')
+        rng = list(topics.id_list_month.keys())
+        rng.append("general")
+        for month_key in tqdm(rng):
+            logging.info("{} topics model build".format(month_key))
+            if month_key == 'general':
+                ids_lst = topics.id_list
+                txt_dt = list(topics.text_data.values())[0]
+            else:
+                ids_lst = topics.id_list_month[month_key]
+                txt_dt = topics.text_data[month_key]
+            run_model(month_key, ids_lst, txt_dt)
 
-    for mod in tqdm(models):
-        logging.info("{} topics model using".format(mod))
-        if mod == 'general':
-            # if type(models[mod][0]) != int:
-            topics.use_model(models[mod][0], topics.id_list, mod + '_best')
-            # if type(models[mod][1]) != int:
-            topics.use_model(models[mod][1], topics.id_list, mod + '_second_best')
-        else:
-            # if type(models[mod][0]) != int:
-            topics.use_model(models[mod][0], topics.id_list_month[mod], str(mod) + '_best')
-            # if type(models[mod][1]) != int:
-            topics.use_model(models[mod][1], topics.id_list_month[mod], str(mod) + '_second_best')
+    # for mod in tqdm(models):
+    #     logging.info("{} topics model using".format(mod))
+    #     # if mod == 4 or mod == 6 or mod == 8 or mod == 12:
+    #     #     continue
+    #     if mod == 'general':
+    #         # if type(models[mod][0]) != int:
+    #         topics.use_model(models[mod][0], topics.id_list, mod + '_best')
+    #         # if type(models[mod][1]) != int:
+    #         topics.use_model(models[mod][1], topics.id_list, mod + '_second_best')
+    #     else:
+    #         # if type(models[mod][0]) != int:
+    #         topics.use_model(models[mod][0], topics.id_list_month[mod], str(mod) + '_best')
+    #         # if type(models[mod][1]) != int:
+    #         topics.use_model(models[mod][1], topics.id_list_month[mod], str(mod) + '_second_best')
