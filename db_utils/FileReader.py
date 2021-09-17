@@ -22,6 +22,11 @@ class FileReader:
     def write_to_csv(self, path, file_name, df_to_write):
         df_to_write.to_csv(path + '\\' + file_name)
 
+    def write_dict_to_json(self,path, file_name, dict_to_write):
+        file = path + file_name + '.json'
+        with open(file, 'w') as fp:
+            json.dump(dict_to_write, fp)
+
 # Press the green button in the gutter to run the script.
 # if __name__ == '__main__':
     # path = "C:/Users/User/Documents/FourthYear/Project/resources/RC_2020-01-01 - Minified.json"
