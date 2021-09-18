@@ -2,11 +2,21 @@ import pymongo
 import os
 from dotenv import load_dotenv
 from pprint import pprint
-import  pandas as pd
+import pandas as pd
+
 load_dotenv()
 
 '''
 This class are responsible on the connection to our DB.
+'''
+'''
+number of comments in all data = 107,365
+
+dict key: post <-> value:comments number = 9858
+
+removed posts = 7536
+
+removed post that have comments = 4187
 '''
 
 
@@ -38,13 +48,22 @@ class Con_DB:
     post return Array that have the title and selftext
     comment return Array that the comments separated by '..', '...' 
     '''
+
     def get_text_from_post_OR_comment(self, object, post_or_comment):
         if post_or_comment == 'post':
-            if 'selftext' in object['pushift_api'].keys():
-                return [object['pushift_api']['title'], object['pushift_api']['selftext'], object['pushift_api']['created_utc'][0], object['pushift_api']['id']]  # return array
-            return [object['pushift_api']['title'], object['reddit_api']['post']['selftext'], object['reddit_api']['post']['created_utc'][0], object['reddit_api']['post']['id']]  # return array
+            id = object['pushift_api']['id']
+            created = object['pushift_api']['created_utc'][0]
+            text = object['pushift_api']['title']
+
+            if "selftext" in object['pushift_api'].keys() and not object['pushift_api']["selftext"].__contains__(
+                    "[removed]") and object['pushift_api']["selftext"] != "[deleted]":
+                text = text + " " + object['pushift_api']["selftext"]
+
+            return [text, created, id]
+
         elif post_or_comment == 'comment':
-            return [(obj['data']['body'], obj['data']['created_utc'][0], obj['data']['id'] ) for obj in object['reddit_api']['comments']]  # return array
+            return [(obj['data']['body'], obj['data']['created_utc'][0], obj['data']['id']) for obj in
+                    object['reddit_api']['comments']]  # return array
 
     def insert_to_db(self, reddit_post):
         self.posts_cursor.insert_one(reddit_post)
@@ -59,7 +78,7 @@ class Con_DB:
         for post in posts_cursor.find({}):
             posts_cursor.insert_one({"_id": post["_id"]}, {"$set": {filed_name: data}})
 
-    def reoder_mongo(self, collection_name):
+    def reorder_mongo(self, collection_name):
         posts_cursor = self.get_cursor_from_mongodb(collection_name=collection_name)
         relevent_data = {}
         for post in posts_cursor.find({}):
@@ -99,9 +118,10 @@ class Con_DB:
         text_and_date_list = []
         for post in cursor:
             text_and_date_list.append(self.get_text_from_post_OR_comment(post, post_or_comment='post'))
-        return text_and_date_list  # [title , selftext]
+        return text_and_date_list  # [title , selftext ,created_utc, 'id']
 
     ''' return posts by category'''
+
     def get_data_categories(self, category, collection_name):
         posts = self.get_cursor_from_mongodb(db_name="reddit", collection_name=collection_name)
         posts_to_return = []
@@ -119,6 +139,20 @@ class Con_DB:
                     posts_to_return.append(post)
         return posts_to_return
 
+    def is_removed(self, post, category):
+
+        if 'selftext' in post['pushift_api'].keys():
+
+            if category == "Removed":
+                if post['pushift_api']['selftext'] == "[removed]":
+                    return True
+
+            elif category == "NotRemoved":
+                if post['reddit_api']['post']['selftext'] != "[removed]":
+                    return True
+
+        return False
+
     '''
        This function reading Data from CSV file
        :argument path - path to csv file in this computer
@@ -132,6 +166,7 @@ class Con_DB:
     # csv_reader = csv.reader(f)
     # return csv_reader
 
+
 if __name__ == '__main__':
     con_db = Con_DB()
     posts_cursor = con_db.get_cursor_from_mongodb(collection_name="wallstreetbets")
@@ -142,4 +177,3 @@ if __name__ == '__main__':
     #     print(a)
 
     pprint(con_db.get_specific_items_by_post_ids(ids_list=['hjac6l', 'hjadxl', 'hjaa0v']))
-

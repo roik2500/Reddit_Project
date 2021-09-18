@@ -7,7 +7,7 @@ from datetime import datetime
 import json
 import matplotlib.pyplot as plt
 from api_utils.reddit_api import reddit_api
-
+import pandas as pd
 load_dotenv()
 con_DB = Con_DB()
 reddit_api = reddit_api()
@@ -19,10 +19,10 @@ class EmotionDetection:
         self.emotion_posts_avg_of_subreddit = {"Angry" : {}, "Fear": {},
                                             "Happy" : {}, "Sad": {}, "Surprise" : {}}
 
-    def extract_posts_emotion_rate(self, posts_cursor): # posts format: [title, selftext, date, id]
+    def extract_posts_emotion_rate(self, posts): # posts format: [title, selftext, date, id]
         # for post in posts_cursor.find({}):
-        for post in posts_cursor:
-            post = con_DB.get_text_from_post_OR_comment(object=post, post_or_comment='post')
+        for post in posts:
+            # post = con_DB.get_text_from_post_OR_comment(object=post, post_or_comment='post')
             # if post['reddit_api'][0]['data']['children'][0]['data']['selftext'] == '[removed]':
 
             # The the created_utc time should be converted to "%Y-%m-%d" format
@@ -96,6 +96,34 @@ class EmotionDetection:
         plt.savefig(path_to_save_plt + '_' + NER + '_' + datetime.now().strftime("%H-%M-%S") + ".jpg", transparent=True)
         plt.show()
 
+    # date_format  = '%Y/%m' or  "%Y-%m-%d"
+    def emotion_plot_per_NER(self, date_format, subreddit_name, NER, path_to_save_plt,
+                             removed_df, not_removed_df, all_df):
+
+        for emotion_category in self.emotion_posts_avg_of_subreddit.keys():
+
+            x1_removed = sorted([*removed_df[emotion_category]], key=lambda t: datetime.strptime(t, date_format))
+            x2_not_removed = sorted([*not_removed_df[emotion_category]], key=lambda t: datetime.strptime(t, date_format))
+            x3_all = sorted([*all_df[emotion_category]], key=lambda t: datetime.strptime(t, date_format))
+
+
+
+            y1_removed = [*removed_df[emotion_category].values()]
+            y2_not_removed = [*not_removed_df[emotion_category].values()]
+            y3_all = [*all_df[emotion_category].values()]
+
+
+            # plot lines
+            plt.xticks(rotation=90)
+            plt.plot(x1_removed , y1_removed, label="Removed", linestyle="-")
+            plt.plot(x2_not_removed , y2_not_removed, label="NotRemoved", linestyle="--")
+            plt.plot(x3_all, y3_all, label="All", linesty="-.")
+            plt.title('Emotion Detection to ' + subreddit_name + ' subreddit ' + NER + "-" + emotion_category)
+            plt.ylabel("Emotion rate")
+            plt.xlabel("Time (month)")
+            plt.legend()
+            plt.savefig(path_to_save_plt + '_' + NER + '_' + datetime.now().strftime("%H-%M-%S") + ".jpg", transparent=True)
+            plt.show()
 
 
     def calculate_post_emotion_rate_mean(self):
@@ -108,22 +136,38 @@ class EmotionDetection:
 if __name__ == '__main__':
     emotion_detection = EmotionDetection()
     Con_DB = Con_DB()
+
+    folder_path = 'C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\files\\'
+
+    removed_df = pd.read_csv(folder_path + "Removed_NER_emotion_rate_mean_wallstreetbets.csv")
+    not_removed_df = pd.read_csv(folder_path + "NotRemoved_NER_emotion_rate_mean_wallstreetbets.csv")
+    all_df = pd.read_csv(folder_path + "All_NER_emotion_rate_mean_wallstreetbets.csv")
+
+    for row in removed_df.iterrows():
+        s=5
+
+    emotion_detection.emotion_plot_per_NER(date_format='%Y/%m', subreddit_name="wallstreetbets", NER='TSLA',
+                                           path_to_save_plt='C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\files\\',
+                                           emotion_category="Angry",  removed_df='', not_removed_df='', all_df='')
     # emotion_avg_in_month = ["Angry", "Fear", "Happy", "Sad", "Surprise"]
-    Con_DB.get_data_categories(category="Removed", collection_name="wallstreetbets")
-    # relevant_posts = Con_DB.get_specific_items_by_post_ids(ids_list=['hjaejw'])
-    # posts_cursor = con_DB.get_specific_items_by_post_ids(db_name="reddit", collection_name="wallstreetbets")
+    # posts_that_return = Con_DB.get_data_categories(category="Removed", collection_name="wallstreetbets")
+    # # relevant_posts = Con_DB.get_specific_items_by_post_ids(ids_list=['hjaejw'])
+    # # posts_cursor = con_DB.get_specific_items_by_post_ids(db_name="reddit", collection_name="wallstreetbets")
+    #
+    # print("extracte emotion rate")
+    # # emotion_detection.extract_posts_emotion_rate(Con_DB.posts_cursor.find({}))
+    # emotion_detection.extract_posts_emotion_rate(posts_that_return)
+    #
+    # print("MEAN")
+    # emotion_detection.calculate_post_emotion_rate_mean()
+    #
+    # print("plot")
+    # emotion_detection.emotion_plot_for_posts_in_subreddit(date_format='%Y/%m', subreddit_name="wallstreetbets",
+    #                       NER="",
+    #                       path_to_save_plt='C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\files\\xxx.jpg',
+    #                       category="Removed")
 
-    print("extracte emotion rate")
-    emotion_detection.extract_posts_emotion_rate(Con_DB.posts_cursor.find({}))
 
-    print("MEAN")
-    emotion_detection.calculate_post_emotion_rate_mean()
-
-    print("plot")
-    emotion_detection.emotion_plot_for_posts_in_subreddit(date_format='%Y/%m', subreddit_name="wallstreetbets",
-                          NER="",
-                          path_to_save_plt='C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\files\\xxx.jpg',
-                          category="Removed")
 
     # print("write to disk")
     # with open('C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\emotion_wallstreetbets.json', 'w') as fp:

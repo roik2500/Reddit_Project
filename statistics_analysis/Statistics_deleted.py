@@ -2,6 +2,7 @@ from db_utils.Con_DB import Con_DB
 from tqdm import tqdm
 import pandas as pd
 import pandasql as sqldf
+from pprint import pprint
 
 class Statistic:
     def __init__(self):
@@ -54,14 +55,37 @@ class Statistic:
                 print(post['post_id'])
                 print()
 
-        print("self.deleted: ", self.percentage(self.user_deleted),
-              "self.removed: ", self.percentage(self.removed),
-              "% self.blanked: ", self.percentage(self.blanked),
-              "% self.blanked_and_selftext: ", self.percentage(self.blanked_and_selftext),
+        print("deleted: ", self.percentage(self.user_deleted),
+              "removed: ", self.percentage(self.removed),
+              "% blanked: ", self.percentage(self.blanked),
+              "% blanked_and_selftext: ", self.percentage(self.blanked_and_selftext),
               "% removed_and_selftext: ", self.percentage(self.removed_and_selftext),
-              "% removedP_and_selftextR: ", self.percentage(self.removedP_and_selftextR))
+              "% removedPushshift_and_selftextReddit: ", self.percentage(self.removedP_and_selftextR))
 
 
+    def number_of_comments(self):
+        n = 0
+        dict_post_id_n_comments = {}
+        removed_dict = {}
+        removed_selftext_dict = {}
+        for object in self.posts:
+            n_temp = len(object['reddit_api']['comments'])
+            n += n_temp
+            if n_temp > 0:
+                dict_post_id_n_comments[object['post_id']] = n_temp
+            if object['reddit_api']['post']['selftext'] == '[removed]' and len(object['reddit_api']['post']['selftext']) == 9:
+                removed_dict[object['post_id']] = n_temp
+            if object['reddit_api']['post']['selftext'] == '[removed]' and n_temp > 0:
+                removed_selftext_dict[object['post_id']] = n_temp
+        print("number of comments in all data - {}".format(n))
+        print()
+        print("dict post and comments number {} dict in all data :".format(len(dict_post_id_n_comments.keys())))
+        # pprint(dict_post_id_n_comments)
+        print()
+        print("removed posts len {}".format(len(removed_dict.keys())))
+        # pprint(removed_dict)
+        print("removed_comment_dict len {}".format(len(removed_selftext_dict.keys())))
 if __name__ == '__main__':
     s = Statistic()
-    s.deleted()
+    # s.deleted()
+    s.number_of_comments()
