@@ -40,13 +40,10 @@ class NameEntity:
     def most_N_common_NER(self, N, path):
         df_NER_data = self.file_reader.read_from_csv(path=path)
         dict_title_selftext = dict()
-        dict_selftext = dict()
 
         for index, row in df_NER_data.iterrows():
             row_title = row['title_and_selftext_NER'].replace("'", '')
             title_and_selftext_labels = row_title[2:-2].split('), (')
-            # row_selftext = row['selftext_NER'].replace("'", '')
-            # selftext_labels = row_selftext[2:-2].split('), (')
 
             for label in title_and_selftext_labels:
                 if label in dict_title_selftext:
@@ -55,18 +52,9 @@ class NameEntity:
                 elif label != '':
                     dict_title_selftext[label] = [1, [row['id']]]
 
-            # for label in selftext_labels:
-            #     if label in dict_selftext:
-            #         dict_selftext[label] = [dict_selftext[label][0] + 1, dict_selftext[label][1] + [row['id']]]
-            #     elif label != '':
-            #         dict_selftext[label] = [1, [row['id']]]
-
         uniqe_NER_dict_title_selftext = self.reduce_duplicates(dict_title_selftext)
-        # uniqe_NER_dict_selftext = self.reduce_duplicates(dict_selftext)
 
         N_uniqe_NER_dict_selftext = sorted(uniqe_NER_dict_title_selftext.items(), key=lambda item: item[1][1], reverse=True)[:N]
-        # N_uniqe_NER_dict_selftext = sorted(uniqe_NER_dict_selftext.items(), key=lambda item: item[1][1], reverse=True)[:N]
-        # , N_uniqe_NER_dict_selftext
         # dict format -> { NER : [ NER TYPE, [counting, list_post_ids] ] }
         return N_uniqe_NER_dict_selftext
 
@@ -106,7 +94,7 @@ class NameEntity:
         uniqe_NER = {}
         for key, val in NER_dict.items():
             NER, word_type = key.rsplit(', ', 1)
-
+            NER = NER.lower()
             if NER not in uniqe_NER.keys():
                 uniqe_NER[NER] = [[word_type],val]
             else:
