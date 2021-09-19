@@ -48,7 +48,14 @@ class Statistic:
             if post['pushift_api']["is_video"]:
                 self.num_of_video += 1
 
-    def draw_statistic_bars(self, sentimentObject):
+
+    '''
+    This function is creating a graph that includes 3 bars per month
+    bar  red - positive 
+    bar  blue - neutral 
+    bar  green - negative 
+    '''
+    def draw_statistic_bars(self, sentimentObject,path=""):
         x = list(sentimentObject.text_per_month.keys())
         k = [val['positive'] for val in sentimentObject.sentiment_per_month.values()]
         y = [val['neutral'] for val in sentimentObject.sentiment_per_month.values()]
@@ -56,7 +63,6 @@ class Statistic:
 
         x1 = [i+0.27 for i in list(sentimentObject.text_per_month.keys())]
         x2 = [i+(0.27*2) for i in list(sentimentObject.text_per_month.keys())]
-        #plt.figure(figsize=(15, 5))
 
         fig = plt.figure(figsize=(15, 5))
         ax = fig.add_subplot(111)
@@ -69,17 +75,21 @@ class Statistic:
         self.autolabel(rects1,ax)
         self.autolabel(rects2,ax)
         self.autolabel(rects3,ax)
-        return plt.show()
 
+
+        if path !="":
+            plt.savefig('{}/{} {}.png'.format(path, self.subreddit, self.type_of_post))
+
+        return plt.show()
+    '''
+    Helper function for draw_statistic_bars()
+    This function are indicate the amount of each bar on the graph
+    '''
     def autolabel(self,rects,ax):
         for rect in rects:
             h = rect.get_height()
             ax.text(rect.get_x() + rect.get_width() / 2., 1.05 * h, '%d' % int(h),
                     ha='center', va='bottom')
-
-
-
-
 
     '''
     This function is display the data, its mean printing the self variables in %

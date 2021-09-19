@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 
 class Sentiment:
-    def __init__(self):
+    def __init__(self,subreddit,type):
         self.text_per_month = {}
         self.sentiment_per_month = {}  ##{'1': {"positive":5,'netural:4,'negative:8}, '2': {"positive":7,'netural:4,'negative:8}}
         self.positive = 0
@@ -27,21 +27,25 @@ class Sentiment:
             '''
         return ' '.join(re.sub("(@[A-Za-z0-9]+)|([^0-9A-Za-z \t])|(\w+:\/\/\S+)", " ", tweet).split())
 
-    def get_polarity(self, text):
+    def get_polarity_textblob(self, text):
         analysis = TextBlob(self.clean_tweet(text))
         return analysis.sentiment.polarity
 
-    def get_subjectivity(self, text):
+    def get_polarity_afin(self,text):
+        afn = Afinn()
+        analysis = afn.score(self.clean_tweet(text))
+        return analysis
+
+    def get_subjectivity_textblob(self, text):
         analysis = TextBlob(self.clean_tweet(text))
         return analysis.sentiment.subjectivity
 
     '''
-    This function returning the sentiment of specific text
+    This function returning the sentiment of specific text by using with textblob kit
     return if this text is positive/neutral/negative
     :argument text: text
     '''
-
-    def get_post_sentiment(self, text):
+    def get_post_sentiment_textblob(self, text):
         # create TextBlob object of passed tweet text
         analysis = TextBlob(self.clean_tweet(text))
         if analysis.sentiment.polarity > 0:
@@ -54,6 +58,31 @@ class Sentiment:
             return 'negative'
             # return -1
 
+    '''
+    This function returning the sentiment of specific text by using with afinn kit
+    return if this text is positive/neutral/negative
+    :argument text: text
+    '''
+    def get_post_sentiment_afin(self, text):
+        # create TextBlob object of passed tweet text
+        afn = Afinn()
+        analysis = afn.score(self.clean_tweet(text))
+
+        if analysis > 0:
+            return 'positive'
+            # return 1
+        elif analysis == 0:
+            return 'neutral'
+            # return 0
+        else:
+            return 'negative'
+            # return -1
+
+    '''
+    This function checking if the specific post is removed/All/Not removed
+    :argument post
+    :return list of the pushift_api's dict keys
+    '''
     def check_removed_or_notremoved(self, post):
         if self.type_of_post == "Removed":
             if post['reddit_api']['post']['selftext'] == "[removed]":
@@ -69,7 +98,6 @@ class Sentiment:
 
         elif self.type_of_post == "All":
             return post['pushift_api'].keys()
-
         else:
             return None
 
@@ -83,11 +111,11 @@ class Sentiment:
                               year - x_values = month of the posts
     '''
 
-    def update_sentiment_values(self, post, Month_Or_Year):
+    def update_sentiment(self, post, Month_Or_Year,LayberyName):
         keys = {}
-        # checking if this specific post is removed or not, depends in what we choose as a type
 
-        keys = self.check_removed_or_notremoved(post, self.type_of_post)
+        # checking if this specific post is removed or not, depends in what we choose as a type
+        keys = self.check_removed_or_notremoved(post)
         if keys == None:
             return
         self.total_posts += 1
@@ -100,7 +128,10 @@ class Sentiment:
             # if 'title' in keys:
             text += post['pushift_api']['title']
 
-        temp = self.get_post_sentiment(text)
+        if LayberyName == "afin":
+            temp = self.get_post_sentiment_afin(text)
+        else:
+            temp = self.get_post_sentiment_textblob(text)
 
         # update the dict in order to know how many posts are positive,neutral or negative
         if temp == 'positive':
@@ -136,29 +167,33 @@ class Sentiment:
     :argument fullpath (optionally) - if we want to save an img of the graph this is the full path to drive.
     '''
 
-    def draw_sentiment_time(self, kind_of_sentiment, subreddit, type, topic="", fullpath=""):
+    def draw_sentiment_time(self, LayberyName, kind_of_sentiment="", topic="", fullpath=""):
         # calculate the % of positive, negative and neutral
         self.percent_positive = (self.positive / self.total_posts) * 100
         self.percent_negative = (self.negative / self.total_posts) * 100
         self.percent_neutral = (self.neutral / self.total_posts) * 100
         y_value = []
 
-        # afn = Afinn()
-        for text in tqdm(self.text_per_month.values()):
-            if kind_of_sentiment == "polarity":
-                # temp = self.get_polarity(text[0])
-                scores = sum([self.get_polarity(article) for article in text]) / self.total_posts
 
-            if kind_of_sentiment == "subjectivity":
-                scores = sum([self.get_subjectivity(article) for article in text]) / self.total_posts
+        for text in tqdm(self.text_per_month.values()):
+            if LayberyName == "afin":
+                scores = sum([self.get_polarity_afin(article) for article in text]) / self.total_posts
+
+            elif kind_of_sentiment == "polarity" or LayberyName != "afin":
+                # temp = self.get_polarity(text[0])
+                scores = sum([self.get_polarity_textblob(article) for article in text]) / self.total_posts
+
+            elif kind_of_sentiment == "subjectivity":
+                scores = sum([self.get_subjectivity_textblob(article) for article in text]) / self.total_posts
+
             y_value.append(scores)
 
         self.text_per_month = dict(sorted(self.text_per_month.items(), key=lambda item: item[0]))
 
         # creating graph serially
-        self.draw_sentiment_option1(y_value, list(self.text_per_month.keys()), kind_of_sentiment)
+        self.draw_sentiment_plot(y_value, list(self.text_per_month.keys()), kind_of_sentiment,fullpath=fullpath)
 
-    def draw_sentiment_option1(self, Yaxis, Xaxis, kind_of_sentiment, topic="", fullpath=""):
+    def draw_sentiment_plot(self, Yaxis, Xaxis, kind_of_sentiment, topic="", fullpath=""):
         # position of text plot
         x = max(Xaxis) + 0.5
         y = max(Yaxis) / 2
@@ -178,18 +213,18 @@ class Sentiment:
 
         line, = ax.plot(list(self.text_per_month.keys()), Yaxis, label="Year: 2020")
 
-        ax.annotate('Max', xy=(xmax, ymax), xytext=(xmax, ymax), arrowprops=dict(facecolor='black'))
-        ax.annotate('Min', xy=(xmin, ymin), xytext=(xmin, ymin), arrowprops=dict(facecolor='black'))
+        ax.annotate('Max = {}'.format(ymax), xy=(xmax, ymax), xytext=(xmax, ymax), arrowprops=dict(facecolor='black'))
+        ax.annotate('Min = {}'.format(ymin), xy=(xmin, ymin), xytext=(xmin, ymin), arrowprops=dict(facecolor='black'))
 
         # check if this drawing is for topic anaylasis
         if topic != "":
-            plt.text(x, y,
+            ax.text(x, y,
                      "Sub-Reddit: {}\n Type of posts: {}\n Total Post: {}\n Year: 2020\n Positive: {}%\n Negative: {}%\n Neutral: {}%\n Topic: {}".format(
                          self.subreddit, self.type_of_post, self.total_posts, round(self.percent_positive, 2),
                          round(self.percent_negative, 2), round(self.percent_neutral, 2),
                          topic))
         else:
-            plt.text(x, y,
+            ax.text(x, y,
                      "Sub-Reddit: {}\n Type of posts: {}\n Total Post: {}\n Year: 2020\n Positive: {}%\n Negative: {}%\n Neutral: {}%".format(
                          self.subreddit, self.type_of_post, self.total_posts, round(self.percent_positive, 2),
                          round(self.percent_negative, 2), round(self.percent_neutral, 2)))
@@ -198,11 +233,23 @@ class Sentiment:
         # plt.ylabel("Sentiment ({})".format(kind_of_sentiment))
 
         # case: saving a plot img if there is a fuul path to locaion of saving
-        fileName = "topic"  # change to your file name
+        fileName = ""
+        fileName+=self.subreddit
+        fileName+= self.type_of_post  # change to your file name
+
         if fullpath != "":
-            if topic != "":
-                plt.savefig('{}/{} topic{}({}).png'.format(fullpath, fileName, topic, kind_of_sentiment))
+            if topic != "" and kind_of_sentiment != "":
+                plt.savefig('{}/{} {}({}).png'.format(fullpath, fileName, topic, kind_of_sentiment))
+
+            elif topic != "" and kind_of_sentiment == "":
+                plt.savefig('{}/{} {}.png'.format(fullpath, fileName, topic))
+
+            elif kind_of_sentiment == "" and topic == "":
+                p = fullpath + '/' +self.subreddit+self.type_of_post+'.png'
+                plt.savefig('{}/{} {}.png'.format(fullpath,self.subreddit,self.type_of_post))
             else:
-                plt.savefig('{}/{} ({}).png'.format(fullpath, fileName, kind_of_sentiment))
+                ax.savefig('{}/{} ({}).png'.format(fullpath, fileName, kind_of_sentiment))
 
         return plt.show()
+
+
