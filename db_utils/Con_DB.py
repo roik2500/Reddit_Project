@@ -144,7 +144,7 @@ class Con_DB:
         if 'selftext' in post['pushift_api'].keys():
 
             if category == "Removed":
-                if post['pushift_api']['selftext'] == "[removed]":
+                if post['reddit_api']['selftext'] == "[removed]":
                     return True
 
             elif category == "NotRemoved":

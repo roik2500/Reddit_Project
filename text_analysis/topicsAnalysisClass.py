@@ -77,7 +77,7 @@ def convert_tuples_to_dict(tup):
 
 class TopicsAnalysis:
     def __init__(self, src_name, rmovd_flag, prep_data):
-        self.limit = 11
+        self.limit = 80
         self.start = 2
         self.step = 5
         self.removed_flag = rmovd_flag
@@ -132,19 +132,25 @@ class TopicsAnalysis:
         id_lst, text_data = [], {}
         counter = 0
         for x in tqdm(self.data_cursor):
-            if counter == 100:
-                break
-            x_reddit = x["reddit_api"]["post"]
-            x_pushift = x["pushift_api"]
-            if self.removed_flag or ("selftext" in x_reddit and x_reddit["selftext"].__contains__("[removed]")):
-                month = int(x_reddit["created_utc"][0].split('-')[1])
-                id_lst.append((x["post_id"], month))
-                tokens = prepare_text_for_lda(x_pushift["title"])
-                if "selftext" in x_pushift and not x_pushift["selftext"].__contains__("[removed]") and \
-                        x_pushift["selftext"] != "[deleted]":
-                    tokens.extend(prepare_text_for_lda(x_pushift["selftext"]))
+            if self.removed_flag or self.con_db.is_removed(x, "Removed"):
+                text, date, Id = self.con_db.get_text_from_post_OR_comment(x, "post")
+                month = int(date.split('-')[1])
+                id_lst.append((Id, month))
+                tokens = prepare_text_for_lda(text)
                 text_data.setdefault(month, []).append(tokens)
-                # text_data[month].append(tokens)
+            # # if counter == 100:
+            # #     break
+            # x_reddit = x["reddit_api"]["post"]
+            # x_pushift = x["pushift_api"]
+            # if self.removed_flag or ("selftext" in x_reddit and x_reddit["selftext"].__contains__("[removed]")):
+            #     month = int(x_reddit["created_utc"][0].split('-')[1])
+            #     id_lst.append((x["post_id"], month))
+            #     tokens = prepare_text_for_lda(x_pushift["title"])
+            #     if "selftext" in x_pushift and not x_pushift["selftext"].__contains__("[removed]") and \
+            #             x_pushift["selftext"] != "[deleted]":
+            #         tokens.extend(prepare_text_for_lda(x_pushift["selftext"]))
+            #     text_data.setdefault(month, []).append(tokens)
+            #     # text_data[month].append(tokens)
                 counter += 1
         pickle.dump(id_lst, open(self.dir+'/id_lst.pkl', 'wb'))
         pickle.dump(text_data, open(self.dir+'/text_data.pkl', 'wb'))
@@ -371,7 +377,7 @@ def run_model(key, id_lst, txt_data):
 if __name__ == "__main__":
     regex_lda = re.compile('(model*.*gensim$)')
     source_name, source_type = "wallstreetbets", "mongo"
-    prepare_data = True
+    prepare_data = True  # if true load data from mongo and prapre it. else load models from disk
     for i in range(2):
         removed_flag = i  # if True its all data, if False its only the removed
         topics = TopicsAnalysis(source_name, removed_flag, prepare_data)
