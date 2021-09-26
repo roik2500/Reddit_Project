@@ -137,10 +137,11 @@ class TopicsAnalysis:
             self.con_db.set_client(k)
             self.data_cursor = self.con_db.get_cursor_from_mongodb(collection_name=self.src_name).find({})
             for x in tqdm(self.data_cursor):
-                if self.removed_flag or self.con_db.is_removed(x, "Removed"):
-                    data_list = self.con_db.get_text_from_post_OR_comment(x, "post")
-                    for d in tqdm(data_list):
-                        text, date, Id = d
+                # if self.removed_flag or self.con_db.is_removed(x, self.post_comment, "Removed"):
+                data_list = self.con_db.get_text_from_post_OR_comment(x, self.post_comment)
+                for d in data_list:
+                    text, date, Id, is_removed = d
+                    if self.removed_flag or is_removed:
                         month = int(date.split('-')[1])
                         id_lst.append((Id, month))
                         tokens = prepare_text_for_lda(text)
