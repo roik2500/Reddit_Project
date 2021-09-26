@@ -77,7 +77,7 @@ class reddit_api:
 
 if __name__ == '__main__':
     reddit = reddit_api()
-    submission_reddit = reddit.reddit.submission(id=["hgpif7", "hgpamk", "hgp8pd"])
+    submission_reddit = reddit.reddit.submission(id= "hgp8pd")
     print(submission_reddit)
 
 # path = r'C:\Users\shimon\Visual Studio Code Projects\Reddit_Project'

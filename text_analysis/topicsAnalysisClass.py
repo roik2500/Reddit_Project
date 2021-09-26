@@ -76,13 +76,15 @@ def convert_tuples_to_dict(tup):
 
 
 class TopicsAnalysis:
-    def __init__(self, src_name, rmovd_flag, prep_data):
+    def __init__(self, src_name, rmovd_flag, prep_data, post_comment):
         self.limit = 80
         self.start = 2
         self.step = 5
         self.removed_flag = rmovd_flag
         self.subreddit = src_name
-        self.dir = os.getenv('OUTPUTS_DIR')+src_name
+        self.post_comment = post_comment
+        self.dir = "{}/{}/{}".format(os.getenv('OUTPUTS_DIR'), src_name, self.post_comment)
+        self.src_name = src_name
         if self.removed_flag:
             self.dir += "/all"
         else:
@@ -131,27 +133,33 @@ class TopicsAnalysis:
     def prepare_data(self):
         id_lst, text_data = [], {}
         counter = 0
-        for x in tqdm(self.data_cursor):
-            if self.removed_flag or self.con_db.is_removed(x, "Removed"):
-                text, date, Id = self.con_db.get_text_from_post_OR_comment(x, "post")
-                month = int(date.split('-')[1])
-                id_lst.append((Id, month))
-                tokens = prepare_text_for_lda(text)
-                text_data.setdefault(month, []).append(tokens)
-            # # if counter == 100:
-            # #     break
-            # x_reddit = x["reddit_api"]["post"]
-            # x_pushift = x["pushift_api"]
-            # if self.removed_flag or ("selftext" in x_reddit and x_reddit["selftext"].__contains__("[removed]")):
-            #     month = int(x_reddit["created_utc"][0].split('-')[1])
-            #     id_lst.append((x["post_id"], month))
-            #     tokens = prepare_text_for_lda(x_pushift["title"])
-            #     if "selftext" in x_pushift and not x_pushift["selftext"].__contains__("[removed]") and \
-            #             x_pushift["selftext"] != "[deleted]":
-            #         tokens.extend(prepare_text_for_lda(x_pushift["selftext"]))
-            #     text_data.setdefault(month, []).append(tokens)
-            #     # text_data[month].append(tokens)
-                counter += 1
+        for k in range(1, 5):
+            self.con_db.set_client(k)
+            self.data_cursor = self.con_db.get_cursor_from_mongodb(collection_name=self.src_name).find({})
+            for x in tqdm(self.data_cursor):
+                if self.removed_flag or self.con_db.is_removed(x, "Removed"):
+                    data_list = self.con_db.get_text_from_post_OR_comment(x, "post")
+                    for d in data_list:
+                        text, date, Id = d
+                        month = int(date.split('-')[1])
+                        id_lst.append((Id, month))
+                        tokens = prepare_text_for_lda(text)
+                        text_data.setdefault(month, []).append(tokens)
+                # # if counter == 100:
+                # #     break
+                # x_reddit = x["reddit_api"]["post"]
+                # x_pushift = x["pushift_api"]
+                # if self.removed_flag or ("selftext" in x_reddit and x_reddit["selftext"].__contains__("[removed]")):
+                #     month = int(x_reddit["created_utc"][0].split('-')[1])
+                #     id_lst.append((x["post_id"], month))
+                #     tokens = prepare_text_for_lda(x_pushift["title"])
+                #     if "selftext" in x_pushift and not x_pushift["selftext"].__contains__("[removed]") and \
+                #             x_pushift["selftext"] != "[deleted]":
+                #         tokens.extend(prepare_text_for_lda(x_pushift["selftext"]))
+                #     text_data.setdefault(month, []).append(tokens)
+                #     # text_data[month].append(tokens)
+                    counter += 1
+
         pickle.dump(id_lst, open(self.dir+'/id_lst.pkl', 'wb'))
         pickle.dump(text_data, open(self.dir+'/text_data.pkl', 'wb'))
         for k in text_data:
@@ -378,9 +386,10 @@ if __name__ == "__main__":
     regex_lda = re.compile('(model*.*gensim$)')
     source_name, source_type = "wallstreetbets", "mongo"
     prepare_data = True  # if true load data from mongo and prapre it. else load models from disk
-    for i in range(2):
+    post_comment_flag = "comment"
+    for i in range(0, 2):
         removed_flag = i  # if True its all data, if False its only the removed
-        topics = TopicsAnalysis(source_name, removed_flag, prepare_data)
+        topics = TopicsAnalysis(source_name, removed_flag, prepare_data, post_comment_flag)
         # topics.load_dic_cor("general")
         # if prepare_data:
         #     models = topics.topics_exp(list(topics.text_data.values())[0], "general")

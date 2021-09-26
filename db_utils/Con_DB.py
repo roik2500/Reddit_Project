@@ -23,7 +23,7 @@ removed post that have comments = 4187
 class Con_DB:
 
     def __init__(self):
-        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB"))
+        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB1"))
         self.posts_cursor = None
 
     def get_posts_text(self, posts, name):
@@ -48,6 +48,8 @@ class Con_DB:
     post return Array that have the title and selftext
     comment return Array that the comments separated by '..', '...' 
     '''
+    def set_client(self, i):
+        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB{}".format(i)))
 
     def get_text_from_post_OR_comment(self, object, post_or_comment):
         if post_or_comment == 'post':
@@ -59,10 +61,10 @@ class Con_DB:
                     "[removed]") and object['pushift_api']["selftext"] != "[deleted]":
                 text = text + " " + object['pushift_api']["selftext"]
 
-            return [text, created, id]
+            return [[text, created, id]]
 
         elif post_or_comment == 'comment':
-            return [(obj['data']['body'], obj['data']['created_utc'][0], obj['data']['id']) for obj in
+            return [[obj['data']['body'], obj['data']['created_utc'][0], obj['data']['id']] for obj in
                     object['reddit_api']['comments']]  # return array
 
     def insert_to_db(self, reddit_post):
