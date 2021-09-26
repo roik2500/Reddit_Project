@@ -139,7 +139,7 @@ class TopicsAnalysis:
             for x in tqdm(self.data_cursor):
                 if self.removed_flag or self.con_db.is_removed(x, "Removed"):
                     data_list = self.con_db.get_text_from_post_OR_comment(x, "post")
-                    for d in data_list:
+                    for d in tqdm(data_list):
                         text, date, Id = d
                         month = int(date.split('-')[1])
                         id_lst.append((Id, month))
@@ -158,7 +158,7 @@ class TopicsAnalysis:
                 #         tokens.extend(prepare_text_for_lda(x_pushift["selftext"]))
                 #     text_data.setdefault(month, []).append(tokens)
                 #     # text_data[month].append(tokens)
-                    counter += 1
+                        counter += 1
 
         pickle.dump(id_lst, open(self.dir+'/id_lst.pkl', 'wb'))
         pickle.dump(text_data, open(self.dir+'/text_data.pkl', 'wb'))

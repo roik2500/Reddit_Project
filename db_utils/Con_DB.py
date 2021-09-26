@@ -143,16 +143,15 @@ class Con_DB:
 
     def is_removed(self, post, category):
 
-        if 'selftext' in post['pushift_api'].keys():
+        if 'selftext' in post['reddit_api'].keys():
 
             if category == "Removed":
-                if post['reddit_api']['selftext'] == "[removed]":
+                if post['reddit_api']['post']['selftext'].__contains__("[removed]"):
                     return True
-
+                return False
             elif category == "NotRemoved":
-                if post['reddit_api']['post']['selftext'] != "[removed]":
+                if not post['reddit_api']['post']['selftext'].__contains__("[removed]"):
                     return True
-
         return False
 
     '''
