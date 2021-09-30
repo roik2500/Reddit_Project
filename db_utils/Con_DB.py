@@ -25,7 +25,7 @@ removed post that have comments = 4187
 class Con_DB:
 
     def __init__(self):
-        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB1"))
+        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB2"))
         self.posts_cursor = None
 
     def get_posts_text(self, posts, name):
@@ -140,7 +140,8 @@ class Con_DB:
         # return cursor
         text_and_date_list = []
         for post in cursor:
-            text_and_date_list.append(self.get_text_from_post_OR_comment(post, post_or_comment='post'))
+            # text_and_date_list.append(self.get_text_from_post_OR_comment(post, post_or_comment='post'))
+            text_and_date_list.append(post)
         return text_and_date_list  # [title , selftext ,created_utc, 'id']
 
     ''' return posts by category'''
@@ -151,7 +152,7 @@ class Con_DB:
         for post in posts.find({}):
             if 'selftext' in post['pushift_api'].keys():
                 if category == "Removed":
-                    if post['pushift_api']['selftext'] == "[removed]":
+                    if post['reddit_api']['post']['selftext'] == "[removed]":
                         posts_to_return.append(post)
 
                 elif category == "NotRemoved":
@@ -165,7 +166,6 @@ class Con_DB:
     def is_removed(self, post, post_comment, category):
         if post_comment == "post":
             if 'selftext' in post['reddit_api']['post'].keys():
-
                 if category == "Removed":
                     if post['reddit_api']['post']['selftext'].__contains__("[removed]"):
                         return True
@@ -209,4 +209,4 @@ if __name__ == '__main__':
     #     a = con_db.get_text_from_post_OR_comment(object=obj, post_or_comment='comment')
     #     print(a)
 
-    pprint(con_db.get_specific_items_by_post_ids(ids_list=['hjac6l', 'hjadxl', 'hjaa0v']))
+    # pprint(con_db.get_specific_items_by_post_ids(ids_list=['hjac6l', 'hjadxl', 'hjaa0v']))
