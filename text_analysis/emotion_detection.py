@@ -30,8 +30,8 @@ class EmotionDetection:
         for post in tqdm(posts):
             items = con_DB.get_text_from_post_OR_comment(object=post, post_or_comment='post')
             for item in items:
-                if item[-1]:
-                    break
+                # if item[-1]:
+                #     break
                 year = int(datetime.strptime(item[1]
                                              , "%Y-%m-%d").date().year)
                 month = int(datetime.strptime(item[1]
@@ -203,23 +203,23 @@ if __name__ == '__main__':
     emotion_detection = EmotionDetection()
     file_reader = FileReader()
     Con_DB = Con_DB()
-    for k in range(1, 5):
-        Con_DB.set_client(k)
-        data_cursor = Con_DB.get_cursor_from_mongodb(db_name='reddit', collection_name='wallstreetbets').find({})
-        folder_path = 'C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\files\\'
-        emotion_avg_in_month = ["Angry", "Fear", "Happy", "Sad", "Surprise"]
+    # for k in range(1, 5):
+    #     Con_DB.set_client(k)
+    data_cursor = Con_DB.get_cursor_from_mongodb(db_name='reddit', collection_name='wallstreetbets').find({})
+    folder_path = 'C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\files\\'
+    emotion_avg_in_month = ["Angry", "Fear", "Happy", "Sad", "Surprise"]
 
-        print("extract emotion rate")
-        emotion_detection.extract_posts_emotion_rate(posts=data_cursor, con_DB=Con_DB)
-        # has_removed=False -> get data that the selftext of post are removed
-        #
-        print("MEAN")
-        emotion_detection.calculate_post_emotion_rate_mean()
+    print("extract emotion rate")
+    emotion_detection.extract_posts_emotion_rate(posts=data_cursor, con_DB=Con_DB)
+    # has_removed=False -> get data that the selftext of post are removed
+    #
+    print("MEAN")
+    emotion_detection.calculate_post_emotion_rate_mean()
 
-        print("write to disk")
-        file_name = 'emotion_wallstreetbets_DB{}_Removed'.format(k)
-        file_reader.write_dict_to_json(path='C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\',
-                                 file_name=file_name, dict_to_write=emotion_detection.emotion_posts_avg_of_subreddit)
+    print("write to disk")
+    file_name = 'emotion_wallstreetbets_DB_All'
+    file_reader.write_dict_to_json(path='C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\',
+                             file_name=file_name, dict_to_write=emotion_detection.emotion_posts_avg_of_subreddit)
 
     print("plot")
     emotion_detection.emotion_posts_avg_of_subreddit={}
