@@ -1,5 +1,3 @@
-import datetime
-
 import pymongo
 import os
 from dotenv import load_dotenv
@@ -25,8 +23,11 @@ removed post that have comments = 4187
 class Con_DB:
 
     def __init__(self):
-        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB2"))
+        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB"))
         self.posts_cursor = None
+
+    def setAUTH_DB(self,num):
+        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB{}".format(num)))
 
     def get_posts_text(self, posts, name):
         return posts.find({'{}'.format(name): {"$exists": True}})
@@ -57,21 +58,17 @@ class Con_DB:
     comment return Array that the comments separated by '..', '...' 
     '''
 
-    def set_client(self, i):
-        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB{}".format(i)))
-
     def get_text_from_post_OR_comment(self, object, post_or_comment):
         if post_or_comment == 'post':
             id = object['pushift_api']['id']
             created = object['pushift_api']['created_utc'][0]
             text = object['pushift_api']['title']
-            is_removed = self.is_removed(object, "post", "Removed")
 
             if "selftext" in object['pushift_api'].keys() and not object['pushift_api']["selftext"].__contains__(
                     "[removed]") and object['pushift_api']["selftext"] != "[deleted]":
                 text = text + " " + object['pushift_api']["selftext"]
 
-            return [[text, created, id, is_removed]]
+            return [text, created, id]
 
         elif post_or_comment == 'comment':
             res = []
@@ -140,8 +137,7 @@ class Con_DB:
         # return cursor
         text_and_date_list = []
         for post in cursor:
-            # text_and_date_list.append(self.get_text_from_post_OR_comment(post, post_or_comment='post'))
-            text_and_date_list.append(post)
+            text_and_date_list.append(self.get_text_from_post_OR_comment(post, post_or_comment='post'))
         return text_and_date_list  # [title , selftext ,created_utc, 'id']
 
     ''' return posts by category'''
