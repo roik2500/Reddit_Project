@@ -10,8 +10,8 @@ import pandas as pd
 from text_analysis.emotion_detection import EmotionDetection
 from text_analysis.name_entity_recognition import NameEntity
 
-import matplotlib.pyplot as plt
-from matplotlib.dates import date2num
+# import matplotlib.pyplot as plt
+# from matplotlib.dates import date2num
 import datetime
 
 

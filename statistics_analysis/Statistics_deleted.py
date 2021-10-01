@@ -8,7 +8,7 @@ class Statistic:
     def __init__(self,k):
         # create a new object of connection to DB
         con = Con_DB(k)
-        post_collection = con.get_cursor_from_mongodb(collection_name="wallstreetbets")
+        post_collection = con.get_cursor_from_mongodb(collection_name="politics")
         self.posts = [post for post in post_collection.find({})]
         # self.df=pd.DataFrame(p)
         # pushshift_collection = con.get_posts_from_mongodb(collection_name="pushift_api")
@@ -97,7 +97,7 @@ if __name__ == '__main__':
     total_removed = 0
     for k in range(1, 5):
         s = Statistic(k)
-        # s.deleted()
+        s.deleted()
         total_removed += s.number_of_comments()
         print( " NEWWWWW  {}".format(k))
 

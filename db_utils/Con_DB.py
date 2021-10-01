@@ -61,7 +61,7 @@ class Con_DB:
     def get_text_from_post_OR_comment(self, object, post_or_comment):
         if post_or_comment == 'post':
             id = object['pushift_api']['id']
-            created = object['pushift_api']['created_utc'][0]
+            created = object['reddit_api']['post']['created_utc'][0]
             text = object['pushift_api']['title']
 
             if "selftext" in object['pushift_api'].keys() and not object['pushift_api']["selftext"].__contains__(
@@ -87,6 +87,11 @@ class Con_DB:
 
     def insert_to_db(self, reddit_post):
         self.posts_cursor.insert_one(reddit_post)
+
+    def update_to_db(self, Id, reddit_post):
+        myquery = {"post_id": Id}
+        newvalues = {"$set": {"reddit_api": reddit_post}}
+        self.posts_cursor.update_one(myquery, newvalues)
 
     def add_filed(self, data, filed_name='reddit_or_pushshift', collection_name="wallstreetbets"):
         '''
