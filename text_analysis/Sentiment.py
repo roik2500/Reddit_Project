@@ -237,18 +237,18 @@ class Sentiment:
         fileName+=self.subreddit
         fileName+= self.type_of_post  # change to your file name
 
-        if fullpath != "":
-            if topic != "" and kind_of_sentiment != "":
-                plt.savefig('{}/{} {}({}).png'.format(fullpath, fileName, topic, kind_of_sentiment))
-
-            elif topic != "" and kind_of_sentiment == "":
-                plt.savefig('{}/{} {}.png'.format(fullpath, fileName, topic))
-
-            elif kind_of_sentiment == "" and topic == "":
-                p = fullpath + '/' +self.subreddit+self.type_of_post+'.png'
-                plt.savefig('{}/{} {}.png'.format(fullpath,self.subreddit,self.type_of_post))
-            else:
-                ax.savefig('{}/{} ({}).png'.format(fullpath, fileName, kind_of_sentiment))
+        # if fullpath != "":
+        #     if topic != "" and kind_of_sentiment != "":
+        #         plt.savefig('{}/{} {}({}).png'.format(fullpath, fileName, topic, kind_of_sentiment))
+        #
+        #     elif topic != "" and kind_of_sentiment == "":
+        #         plt.savefig('{}/{} {}.png'.format(fullpath, fileName, topic))
+        #
+        #     elif kind_of_sentiment == "" and topic == "":
+        #         p = fullpath + '/' +self.subreddit+self.type_of_post+'.png'
+        #         plt.savefig('{}/{} {}.png'.format(fullpath,self.subreddit,self.type_of_post))
+        #     else:
+        #         ax.savefig('{}/{} ({}).png'.format(fullpath, fileName, kind_of_sentiment))
 
         return plt.show()
 
