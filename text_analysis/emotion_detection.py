@@ -30,8 +30,8 @@ class EmotionDetection:
         for post in tqdm(posts):
             items = con_DB.get_text_from_post_OR_comment(object=post, post_or_comment='post')
             for item in items:
-                # if item[-1]:
-                #     break
+                if item[-1]:
+                    break
                 year = int(datetime.strptime(item[1]
                                              , "%Y-%m-%d").date().year)
                 month = int(datetime.strptime(item[1]
@@ -78,15 +78,18 @@ class EmotionDetection:
         plt.legend()
 
         if re.match("^[A-Za-z0-9_-]*$", NER):
-            plt.savefig(path_to_save_plt + '_' + NER + '_' + datetime.now().strftime("%H-%M-%S") + ".jpg", transparent=True)
+            plt.savefig(path_to_save_plt + '_' + NER + '_' + datetime.now().strftime("%H-%M-%S") + ".jpg",
+                        transparent=True)
         plt.show()
 
     # date_format  = '%Y/%m' or  "%Y-%m-%d"
     def emotion_plot_for_all_posts_in_subreddit(self, date_format, subreddit_name, path_to_save_plt, category,
                                                 path_to_read_data):
         # read_files = glob2.glob("emotion_wallstreetbets_DB.json")
-        read_files=[path_to_read_data+"emotion_wallstreetbets_DB1.json", path_to_read_data+"emotion_wallstreetbets_DB2.json",
-                    path_to_read_data+"emotion_wallstreetbets_DB3.json", path_to_read_data+"emotion_wallstreetbets_DB4.json"]
+        read_files = [path_to_read_data + "emotion_wallstreetbets_DB1.json",
+                      path_to_read_data + "emotion_wallstreetbets_DB2.json",
+                      path_to_read_data + "emotion_wallstreetbets_DB3.json",
+                      path_to_read_data + "emotion_wallstreetbets_DB4.json"]
         for f in read_files:
             with open(f, 'r') as current_file:
                 raw = current_file.read()
@@ -117,39 +120,42 @@ class EmotionDetection:
         plt.ylabel("Emotion rate")
         plt.xlabel("Time (month)")
         plt.legend()
-        plt.savefig(path_to_save_plt + '_' +subreddit_name+ '_' + category +
+        plt.savefig(path_to_save_plt + '_' + subreddit_name + '_' + category +
                     '_' + datetime.now().strftime("%H-%M-%S") + ".jpg", transparent=True)
         plt.show()
 
     '''This method plot graph per emotion(like Fear) for one NER'''
+
     # date_format  = '%Y/%m' or  "%Y-%m-%d"
     def emotion_plot_per_NER(self, date_format, subreddit_name, NER, path_to_save_plt,
                              removed_df, not_removed_df, emotions_list_category):
 
         for emotion_category in emotions_list_category:
             removed_sorted = sorted(removed_df[emotion_category].iloc[0].replace("'", '')[2:-2].split('), ('),
-                                 key=lambda t: datetime.strptime(t.split(', ')[0], date_format))
+                                    key=lambda t: datetime.strptime(t.split(', ')[0], date_format))
             not_removed_sorted = sorted(not_removed_df[emotion_category].iloc[0].replace("'", '')[2:-2].split('), ('),
-                                 key=lambda t: datetime.strptime(t.split(', ')[0], date_format))
+                                        key=lambda t: datetime.strptime(t.split(', ')[0], date_format))
 
             # all_sorted=sorted(all_df[emotion_category].iloc[0].replace("'", '')[2:-2].split('), ('),all_df
             #                      key=lambda t: datetime.strptime(t.split(', ')[0], date_format))
-            x1_removed = [datetime.strptime(key_date .split(', ')[0], date_format) for key_date in removed_sorted]
-            x2_not_removed = [datetime.strptime(key_date .split(', ')[0], date_format) for key_date  in not_removed_sorted]
+            x1_removed = [datetime.strptime(key_date.split(', ')[0], date_format) for key_date in removed_sorted]
+            x2_not_removed = [datetime.strptime(key_date.split(', ')[0], date_format) for key_date in
+                              not_removed_sorted]
             # x3_all = [datetime.strptime(key_date .split(', ')[0], date_format) for key_date  in all_sorted]
 
-            y1_removed = [round(Decimal(key_date .split(', ')[1]), 2) for key_date  in removed_sorted]
-            y2_not_removed = [round(Decimal(key_date .split(', ')[1]), 2) for key_date  in not_removed_sorted]
+            y1_removed = [round(Decimal(key_date.split(', ')[1]), 2) for key_date in removed_sorted]
+            y2_not_removed = [round(Decimal(key_date.split(', ')[1]), 2) for key_date in not_removed_sorted]
 
             x3_interseting_point, y3_interseting_point = self.get_interseting_point(removed=removed_sorted,
-                                            not_removed=not_removed_sorted, date_format=date_format)
+                                                                                    not_removed=not_removed_sorted,
+                                                                                    date_format=date_format)
             # y3_all = [round(Decimal(key_date .split(', ')[1]), 2) for key_date  in all_sorted]
 
             # plot lines
             fig, ax = plt.subplots()
 
             # ax.plot_date(x, y, markerfacecolor='CornflowerBlue', markeredgecolor='white')
-            ax.set_ylim(0.0, max(*y1_removed, *y2_not_removed)+Decimal(0.04))
+            ax.set_ylim(0.0, max(*y1_removed, *y2_not_removed) + Decimal(0.04))
             fig.autofmt_xdate()
             ax.set_xlim([date(2020, 1, 1), date(2020, 12, 31)])
             # plt.show()
@@ -167,14 +173,17 @@ class EmotionDetection:
             plt.ylabel("Emotion rate")
             plt.xlabel("Time (month)")
             plt.legend()
-            plt.savefig(path_to_save_plt + '_' + NER + '_' + emotion_category + datetime.now().strftime("%H-%M-%S") + ".jpg",
-                        transparent=True)
+            plt.savefig(
+                path_to_save_plt + '_' + NER + '_' + emotion_category + datetime.now().strftime("%H-%M-%S") + ".jpg",
+                transparent=True)
             plt.show()
             plt.clf()
 
     def get_interseting_point(self, removed, not_removed, date_format):
-        removed = {datetime.strptime(key_date .split(', ')[0], date_format) : key_date .split(', ')[1] for key_date  in removed}
-        not_removed = {datetime.strptime(key_date .split(', ')[0], date_format) : key_date .split(', ')[1] for key_date  in not_removed}
+        removed = {datetime.strptime(key_date.split(', ')[0], date_format): key_date.split(', ')[1] for key_date in
+                   removed}
+        not_removed = {datetime.strptime(key_date.split(', ')[0], date_format): key_date.split(', ')[1] for key_date in
+                       not_removed}
         longest_series = len(removed) > len(not_removed)
         interseting_point_dict = {}
         if longest_series:
@@ -198,53 +207,59 @@ class EmotionDetection:
                 self.emotion_posts_avg_of_subreddit[emotion][key] = \
                     mean([emotion_rate[1][emotion] for emotion_rate in month_posts_emotions])
 
+    def get_plot_and_emotion_rate_from_all_posts_in_category(self, data_cursor, Con_DB,
+                                                             path_to_read_data, path_to_save_plt, category,
+                                                             subreddit_name):
+        print("extract emotion rate")
+        self.extract_posts_emotion_rate(posts=data_cursor, con_DB=Con_DB)
+        # has_removed=False -> get data that the selftext of post are removed
+        #
+        print("MEAN")
+        self.calculate_post_emotion_rate_mean()
+        print("write to disk")
+        file_name = 'emotion_rate_{}_{}'.format(subreddit_name, category)
+        file_reader.write_dict_to_json(path=path_to_read_data,
+                                       file_name=file_name,
+                                       dict_to_write=emotion_detection.emotion_posts_avg_of_subreddit)
+        print("plot")
+        self.emotion_posts_avg_of_subreddit = {}
+        self.emotion_dict = {}
+        self.emotion_plot_for_all_posts_in_subreddit(date_format='%Y/%m', subreddit_name=subreddit_name,
+                                                                  path_to_read_data=path_to_read_data,
+                                                                  path_to_save_plt=path_to_save_plt,
+                                                                  category=category)
+
 
 if __name__ == '__main__':
     emotion_detection = EmotionDetection()
     file_reader = FileReader()
     Con_DB = Con_DB()
-    # for k in range(1, 5):
-    #     Con_DB.set_client(k)
     data_cursor = Con_DB.get_cursor_from_mongodb(db_name='reddit', collection_name='wallstreetbets').find({})
     folder_path = 'C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\files\\'
     emotion_avg_in_month = ["Angry", "Fear", "Happy", "Sad", "Surprise"]
 
-    print("extract emotion rate")
-    emotion_detection.extract_posts_emotion_rate(posts=data_cursor, con_DB=Con_DB)
-    # has_removed=False -> get data that the selftext of post are removed
+    # emotion_detection.get_plot_and_emotion_rate_from_all_posts_in_category(data_cursor=data_cursor,
+    #                    Con_DB=Con_DB,
+    #                    path_to_read_data='C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\',
+    #                    path_to_save_plt=folder_path,
+    #                    category="Removed",
+    #                    subreddit_name=os.getenv("COLLECTION_NAME"))
     #
-    print("MEAN")
-    emotion_detection.calculate_post_emotion_rate_mean()
-
-    print("write to disk")
-    file_name = 'emotion_wallstreetbets_DB_All'
-    file_reader.write_dict_to_json(path='C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\',
-                             file_name=file_name, dict_to_write=emotion_detection.emotion_posts_avg_of_subreddit)
-
-    print("plot")
-    emotion_detection.emotion_posts_avg_of_subreddit={}
-    emotion_detection.emotion_dict={}
-    emotion_detection.emotion_plot_for_all_posts_in_subreddit(date_format='%Y/%m', subreddit_name="wallstreetbets",
-          path_to_read_data='C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\',
-          path_to_save_plt='C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\files\\',
-          category="Removed")
-
-
     # emotions = ["Angry", "Fear", "Happy", "Sad", "Surprise"]
-        # removed_df = pd.read_csv(folder_path + "Removed_NER_emotion_rate_mean_wallstreetbets.csv")
-        # not_removed_df = pd.read_csv(folder_path + "NotRemoved_NER_emotion_rate_mean_wallstreetbets.csv")
-        # folder_path = 'C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\emotion_plots\\'
-        # # all_df = pd.read_csv(folder_path + "All_NER_emotion_rate_mean_wallstreetbets.csv")
-        #
-        # r_entities_set = set([entity[1] for index, entity in removed_df.iterrows()])
-        # nr_entities_set = set([entity[1] for index, entity in not_removed_df.iterrows()])
-        # entities_set = r_entities_set.intersection(nr_entities_set)
-        #
-        #
-        # for entity in entities_set:
-        #     emotion_detection.emotion_plot_per_NER(date_format='%Y/%m', subreddit_name="wallstreetbets", NER=entity,
-        #                        path_to_save_plt=folder_path,
-        #                        removed_df=removed_df.loc[removed_df['entity'] == entity],
-        #                        not_removed_df=not_removed_df.loc[not_removed_df['entity'] == entity],
-        #                        # all_df=all_df.loc[all_df['entity'] == entity],
-        #                        emotions_list_category=emotions)
+    # data_category_df = pd.read_csv(folder_path + "Removed_NER_emotion_rate_mean_wallstreetbets.csv")
+    # not_removed_df = pd.read_csv(folder_path + "NotRemoved_NER_emotion_rate_mean_wallstreetbets.csv")
+    # folder_path = 'C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\emotion_plots\\'
+    # # all_df = pd.read_csv(folder_path + "All_NER_emotion_rate_mean_wallstreetbets.csv")
+    #
+    # r_entities_set = set([entity[1] for index, entity in data_category_df.iterrows()])
+    # nr_entities_set = set([entity[1] for index, entity in not_removed_df.iterrows()])
+    # entities_set = r_entities_set.intersection(nr_entities_set)
+    #
+    # for entity in entities_set:
+    #     emotion_detection.emotion_plot_per_NER(date_format='%Y/%m', subreddit_name=os.getenv("COLLECTION_NAME"),
+    #                                            NER=entity,
+    #                                            path_to_save_plt=folder_path,
+    #                                            removed_df=data_category_df.loc[data_category_df['entity'] == entity],
+    #                                            not_removed_df=not_removed_df.loc[not_removed_df['entity'] == entity],
+    #                                            # all_df=all_df.loc[all_df['entity'] == entity],
+    #                                            emotions_list_category=emotions)

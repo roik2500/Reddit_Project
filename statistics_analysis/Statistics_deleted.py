@@ -1,14 +1,14 @@
 from db_utils.Con_DB import Con_DB
 from tqdm import tqdm
 import pandas as pd
-import pandasql as sqldf
+import os
 from pprint import pprint
 
 class Statistic:
     def __init__(self,k):
         # create a new object of connection to DB
         con = Con_DB(k)
-        post_collection = con.get_cursor_from_mongodb(collection_name="politics")
+        post_collection = con.get_cursor_from_mongodb(collection_name=os.getenv("COLLECTION_NAME"))
         self.posts = [post for post in post_collection.find({})]
         # self.df=pd.DataFrame(p)
         # pushshift_collection = con.get_posts_from_mongodb(collection_name="pushift_api")

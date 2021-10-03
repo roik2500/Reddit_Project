@@ -14,10 +14,10 @@ import pandas as pd
 
 folder_path = 'C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\files\\'
 
-removed_df = pd.read_csv(folder_path+"Removed_NER_emotion_rate_mean_wallstreetbets.csv")
+data_category_df = pd.read_csv(folder_path + "Removed_NER_emotion_rate_mean_wallstreetbets.csv")
 not_removed_df = pd.read_csv(folder_path+"NotRemoved_NER_emotion_rate_mean_wallstreetbets.csv")
 all_df = pd.read_csv(folder_path+"All_NER_emotion_rate_mean_wallstreetbets.csv")
 
-new_df = removed_df.set_index("id").join(not_removed_df.set_index("id"))
+new_df = data_category_df.set_index("id").join(not_removed_df.set_index("id"))
 merge_df = new_df.set_index("id").join(all_df.set_index("id"))
 merge_df.to_csv(folder_path+"merge.csv")

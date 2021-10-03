@@ -54,17 +54,17 @@ class NameEntity:
                 elif label != '':
                     dict_title_selftext[label] = [1, [row['id']]]
 
-        uniqe_NER_dict_title_selftext = self.reduce_duplicates(dict_title_selftext)
+        uniqe_NER_dict_title_selftext = self.reduce_duplicates(NER_dict=dict_title_selftext, delimiter=', ')
 
         N_uniqe_NER_dict_selftext = sorted(uniqe_NER_dict_title_selftext.items(), key=lambda item: item[1][1],
                                            reverse=True)[:N]
         # dict format -> { NER : [ NER TYPE, [counting, list_post_ids] ] }
         return N_uniqe_NER_dict_selftext
 
-    def reduce_duplicates(self, NER_dict):
+    def reduce_duplicates(self, NER_dict, delimiter):
         uniqe_NER = {}
         for key, val in NER_dict.items():
-            NER, word_type = key.rsplit(', ', 1)
+            NER, word_type = key.rsplit(delimiter, 1)
             NER = NER.lower()
             if NER not in uniqe_NER.keys():
                 uniqe_NER[NER] = [[word_type], val]
@@ -89,52 +89,42 @@ class NameEntity:
 
         return NER_by_type
 
-    def extract_NER_from_data(self, posts, file_name_to_save, path_to_folder, save_deduced_data, con_db):
-        # posts = con_db.get_cursor_from_mongodb(collection_name="wallstreetbets")
+    def extract_NER_from_data(self, posts, file_name_to_save, path_to_folder, save_deduced_data, con_db, is_removed_bool):
         name_entity_list = []
         # con = Con_DB()
         # for post in posts.find({}):
-        counter = 0
         for post in tqdm(posts):
             keys = post['pushift_api'].keys()
 
-            if (('id' in keys) and ('selftext' in keys) and ('title' in keys)):
-                text = post['pushift_api']['title'] + post['pushift_api']['selftext']
-                name_entity_list.append([post['pushift_api']['id'], self.get_entites(text)])
-
-            elif (('id' in keys) and ('selftext' not in keys) and ('title' in keys)):
-                text = post['pushift_api']['title'] + post['reddit_api']['post']['selftext']
-                name_entity_list.append([post['pushift_api']['id'], self.get_entites(text)])
-
             objects = con_db.get_text_from_post_OR_comment(post_or_comment="post", object=post)
             for object in objects:
+                if object[-1] == is_removed_bool:
+                    name_entity_list.append([object[2], self.get_entites(object[1])])
+                else:# Not removed
+                    name_entity_list.append([object[2], self.get_entites(object[1])])
                 for new_ner_key, NER_type in name_entity_list[-1][1]:
                     if NER_type in ['ORG', 'PERSON', 'PRODUCT']:
-                        if counter == 1000:
-                            self.save_to_csv(file_name_to_save, name_entity_list, path_to_folder)
-                            self.file_reader.write_dict_to_json(path=path_to_folder, file_name="NER_per_month2",
-                                                                dict_to_write=self.NER_per_month)
                         new_ner_post_id = [object[2]]
                         year = int(datetime.strptime(object[1], "%Y-%m-%d").date().year)
                         month = int(datetime.strptime(object[1], "%Y-%m-%d").date().month)
                         date_key = str(year) + "/" + str(month)
-
-                        if object[1] in self.NER_per_month.keys() and new_ner_key in self.NER_per_month[
-                            object[1]].keys():
-
+                        key = "{}-{}".format(new_ner_key, NER_type)
+                        if date_key in self.NER_per_month.keys() and key in self.NER_per_month[date_key].keys():
                             self.NER_per_month[date_key].update(
-                                {new_ner_key: self.NER_per_month[object[1]][new_ner_key] +
-                                              new_ner_post_id})
+                                {key: [self.NER_per_month[date_key][key][0] + 1, self.NER_per_month[date_key][key][1] +
+                                       new_ner_post_id]})
                         else:
 
-                            if object[1] in self.NER_per_month.keys():
-                                self.NER_per_month[date_key].update({new_ner_key: new_ner_post_id})
+                            if date_key in self.NER_per_month.keys():
+                                self.NER_per_month[date_key].update({key: [1, new_ner_post_id]})
                             else:
-                                self.NER_per_month[date_key] = {new_ner_key: new_ner_post_id}
-            counter += 1
+                                self.NER_per_month[date_key] = {key: [1, new_ner_post_id]}
 
         if save_deduced_data:
-            # self.save_to_csv(file_name_to_save, name_entity_list, path_to_folder)
+            print("save_deduced_data")
+            self.save_to_csv(file_name_to_save, name_entity_list, path_to_folder)
+            for key, val in self.NER_per_month.items():
+                self.NER_per_month[key] = name_entity.reduce_duplicates(NER_dict=val, delimiter='-')
             self.file_reader.write_dict_to_json(path=path_to_folder, file_name="NER_per_month",
                                                 dict_to_write=self.NER_per_month)
 
@@ -146,8 +136,7 @@ class NameEntity:
 
 if __name__ == '__main__':
     name_entity = NameEntity()
-    print(name_entity.get_entites("Netflix"))
-    # file_reader = FileReader()
+    file_reader = FileReader()
     # emotion_detection = EmotionDetection()
     # for k in range(1,5):
     #     con_db = Con_DB(k)
@@ -155,7 +144,7 @@ if __name__ == '__main__':
 #
 #     '''' extract NER from data'''
 #
-#     posts = con_db.get_cursor_from_mongodb(collection_name="wallstreetbets")
+#     posts = con_db.get_cursor_from_mongodb(collection_name=os.getenv("COLLECTION_NAME"))
 #     name_entity_list = []
 #     for post in posts.find({}):
 #         # if post['reddit_api'][0]['data']['children'][0]['data']['selftext'] == '[removed]':
@@ -184,7 +173,7 @@ if __name__ == '__main__':
 #
 #     n_common_NER_title, n_common_NER_selftext = name_entity.most_N_common_NER(N=50, path='C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\wallstreetbets_title_selftext_NER.csv')
 #     NER_BY_Type = name_entity.get_NER_BY_Type(n_common_NER_title, 'ORG', 'PERSON', 'PRODUCT', 'FAC')
-#     con_db.get_cursor_from_mongodb(db_name="reddit", collection_name="wallstreetbets")
+#     con_db.get_cursor_from_mongodb(db_name="reddit", collection_name=os.getenv("COLLECTION_NAME"))
 #     for type_item in NER_BY_Type:
 #         for NER_item, posts_ids_list in NER_BY_Type[type_item].items():
 #             relevant_posts = con_db.get_specific_items_by_post_ids(ids_list=posts_ids_list[1])

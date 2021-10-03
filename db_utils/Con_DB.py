@@ -38,7 +38,7 @@ class Con_DB:
             "T")
         return time
 
-    def get_cursor_from_mongodb(self, db_name="reddit", collection_name="pushift_api"):
+    def get_cursor_from_mongodb(self, db_name="reddit", collection_name=os.getenv("COLLECTION_NAME")):
         '''
         This function is return the posts from mongoDB
         :argument db_name: name of the db that you want to connect. TYPE- str
@@ -93,7 +93,7 @@ class Con_DB:
         newvalues = {"$set": {"reddit_api": reddit_post}}
         self.posts_cursor.update_one(myquery, newvalues)
 
-    def add_filed(self, data, filed_name='reddit_or_pushshift', collection_name="wallstreetbets"):
+    def add_filed(self, data, filed_name='reddit_or_pushshift', collection_name=os.getenv("COLLECTION_NAME")):
         '''
            This function is adding filed to post at mongoDB
            :argument filed_name: name of the field you want to add. TYPE- str
@@ -203,8 +203,8 @@ class Con_DB:
 
 if __name__ == '__main__':
     con_db = Con_DB()
-    posts_cursor = con_db.get_cursor_from_mongodb(collection_name="wallstreetbets")
-    # con_db.reoder_mongo("wallstreetbets")
+    posts_cursor = con_db.get_cursor_from_mongodb(collection_name=os.getenv("COLLECTION_NAME"))
+    # con_db.reoder_mongo(os.getenv("COLLECTION_NAME"))
     # con_db.add_filed(filed_name='most_updated_data', data=None)
     # for obj in posts_cursor.find({}):
     #     a = con_db.get_text_from_post_OR_comment(object=obj, post_or_comment='comment')
