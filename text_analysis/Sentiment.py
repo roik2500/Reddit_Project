@@ -191,9 +191,9 @@ class Sentiment:
         self.text_per_month = dict(sorted(self.text_per_month.items(), key=lambda item: item[0]))
 
         # creating graph serially
-        self.draw_sentiment_plot(y_value, list(self.text_per_month.keys()), kind_of_sentiment,fullpath=fullpath)
+        self.draw_sentiment_plot(y_value, list(self.text_per_month.keys()), kind_of_sentiment,topic=topic,fullpath=fullpath,LayberyName=LayberyName)
 
-    def draw_sentiment_plot(self, Yaxis, Xaxis, kind_of_sentiment, topic="", fullpath=""):
+    def draw_sentiment_plot(self, Yaxis, Xaxis, kind_of_sentiment, topic="", fullpath="",LayberyName=""):
         # position of text plot
         x = max(Xaxis) + 0.5
         y = max(Yaxis) / 2
@@ -219,10 +219,10 @@ class Sentiment:
         # check if this drawing is for topic anaylasis
         if topic != "":
             ax.text(x, y,
-                     "Sub-Reddit: {}\n Type of posts: {}\n Total Post: {}\n Year: 2020\n Positive: {}%\n Negative: {}%\n Neutral: {}%\n Topic: {}".format(
+                     "Sub-Reddit: {}\n Type of posts: {}\n Total Post: {}\n Year: 2020\n Positive: {}%\n Negative: {}%\n Neutral: {}%\n Topic: {}\n LayberyName: {}\n kind_of_sentiment: {}".format(
                          self.subreddit, self.type_of_post, self.total_posts, round(self.percent_positive, 2),
                          round(self.percent_negative, 2), round(self.percent_neutral, 2),
-                         topic))
+                         topic,LayberyName,kind_of_sentiment))
         else:
             ax.text(x, y,
                      "Sub-Reddit: {}\n Type of posts: {}\n Total Post: {}\n Year: 2020\n Positive: {}%\n Negative: {}%\n Neutral: {}%".format(
@@ -237,18 +237,18 @@ class Sentiment:
         fileName+=self.subreddit
         fileName+= self.type_of_post  # change to your file name
 
-        if fullpath != "":
-            if topic != "" and kind_of_sentiment != "":
-                plt.savefig('{}/{} {}({}).png'.format(fullpath, fileName, topic, kind_of_sentiment))
-
-            elif topic != "" and kind_of_sentiment == "":
-                plt.savefig('{}/{} {}.png'.format(fullpath, fileName, topic))
-
-            elif kind_of_sentiment == "" and topic == "":
-                p = fullpath + '/' +self.subreddit+self.type_of_post+'.png'
-                plt.savefig('{}/{} {}.png'.format(fullpath,self.subreddit,self.type_of_post))
-            else:
-                ax.savefig('{}/{} ({}).png'.format(fullpath, fileName, kind_of_sentiment))
+        # if fullpath != "":
+        #     if topic != "" and kind_of_sentiment != "":
+        #         plt.savefig('{}/{} {}({}).png'.format(fullpath, fileName, topic, kind_of_sentiment))
+        #
+        #     elif topic != "" and kind_of_sentiment == "":
+        #         plt.savefig('{}/{} {}.png'.format(fullpath, fileName, topic))
+        #
+        #     elif kind_of_sentiment == "" and topic == "":
+        #         p = fullpath + '/' +self.subreddit+self.type_of_post+'.png'
+        #         plt.savefig('{}/{} {}.png'.format(fullpath,self.subreddit,self.type_of_post))
+        #     else:
+        #         ax.savefig('{}/{} ({}).png'.format(fullpath, fileName, kind_of_sentiment))
 
         return plt.show()
 

@@ -10,7 +10,15 @@ import csv
 
 class FileReader:
 
-    def read_from_json(self, PATH):
+
+    ''' :return dict '''
+    def read_from_json_to_dict(self, PATH):
+        with open(PATH) as json_file:
+            data = json.load(json_file)
+        return data
+
+    ''' :return data frame '''
+    def read_from_json_to_df(self, PATH):
         df = pd.read_json(PATH, lines=True)
         df.head()
         return df
@@ -25,7 +33,7 @@ class FileReader:
         else:
             df_to_write.to_csv(path + '\\' + file_name)
 
-    def write_dict_to_json(self,path, file_name, dict_to_write):
+    def write_dict_to_json(self, path, file_name, dict_to_write):
         file = path + file_name + '.json'
         with open(file, 'w') as fp:
             json.dump(dict_to_write, fp)

@@ -10,13 +10,19 @@ import matplotlib.pyplot as plt
 from matplotlib.dates import date2num
 import datetime
 
+# "mongodb+srv://roi:1234@redditdata.aav2q.mongodb.net/"
 if __name__ == '__main__':
-
     con = Con_DB()
-    posts = con.get_cursor_from_mongodb(collection_name="wallstreetbets")
+    #posts = con.get_cursor_from_mongodb(collection_name="wallstreetbets")
     # path = 'C:/Users/roik2/PycharmProjects/Reddit_Project/data/document_topic_table_general.csv'  # Change to your path in your computer
     path_csv = 'C:/Users/roik2/PycharmProjects/Reddit_Project/data/document_topic_table_general_best .csv'  # Change to your path in your computer
     path_drive = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/'
+
+    # outputs
+    afin_sentiment = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/afin/afin_sentiment'
+    afin_statistic = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/afin/afin_statistic'
+    textblob_sentiment = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/textblob/textblob_sentiment'
+    textblob_statistic = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/textblob/textblob_statistic'
 
     # define a objects for tests
     subreddit = "wallstreetbets"
@@ -29,6 +35,24 @@ if __name__ == '__main__':
     stat_api_Removed = Statistic(subreddit, "Removed")
     stat_Not_Removed = Statistic(subreddit, "NotRemoved")
 
+    # All
+    afin_sent_all = Sentiment("wallstreetbets", "All")
+    textblob_sent_all = Sentiment("wallstreetbets", "All")
+    afin_stat_all = Statistic("wallstreetbets", "All")
+    textblob_stat_all = Statistic("wallstreetbets", "All")
+
+    # Removed
+    afin_sent_removed = Sentiment("wallstreetbets", "Removed")
+    textblob_sent_removed = Sentiment("wallstreetbets", "Removed")
+    afin_stat_removed = Statistic("wallstreetbets", "Removed")
+    textblob_stat_removed = Statistic("wallstreetbets", "Removed")
+
+    # NotRemoved
+    afin_sent_notremoved = Sentiment("wallstreetbets", "NotRemoved")
+    textblob_sent_notremoved = Sentiment("wallstreetbets", "NotRemoved")
+    afin_stat_notremoved = Statistic("wallstreetbets", "NotRemoved")
+    textblob_stat_notremoved = Statistic("wallstreetbets", "NotRemoved")
+
     '''
     This function creating graphs for all the topics (graph per topic)
     :argument path - path to csv file that contains the data of all topics
@@ -37,7 +61,8 @@ if __name__ == '__main__':
 
 
     def creat_Sentiment_Graph_For_Topics(path_drive=""):
-        full_path = path_drive + "sentiment for topics/"
+        posts = con.get_cursor_from_mongodb(collection_name="wallstreetbets")
+        ##full_path = path_drive + "sentiment for topics/"
         topic_set = Sentiment("wallstreetbets", "All")
         topic_csv = con.read_fromCSV(path_csv)
         for topic_id in tqdm(topic_csv["Dominant_Topic"].unique()):
@@ -48,11 +73,18 @@ if __name__ == '__main__':
                 post = posts.find({"post_id": post_id})[0]
                 topic_set.update_sentiment(post, "All", "month")  # iteration per month or per year
 
-            # topic_set.draw_sentiment_time("polarity", "wallstreetbets", "All",topic_id,path_drive)
-            # topic_set.draw_sentiment_time("subjectivity", "wallstreetbets", "All",topic_id,path_drive)
+            path_textblob_polarity = creat_new_folder_drive("textblob_polarity", path_drive + '/')
+            path_afin_polarity = creat_new_folder_drive("afin_polarity", path_drive + '/')
+            path_textblob_subjectivity = creat_new_folder_drive("textblob_subjectivity", path_drive + '/')
+
+            topic_set.draw_sentiment_time("textblob", "polarity",topic_id,path_textblob_polarity)
+            topic_set.draw_sentiment_time("textblob", "subjectivity", topic_id, path_textblob_subjectivity)
+            topic_set.draw_sentiment_time("afin", "polarity",topic_id,path_afin_polarity)
+
 
             # topic_set.draw_sentiment_time("polarity", "wallstreetbets", "All")
             # topic_set.draw_sentiment_time("subjectivity", "wallstreetbets", "All")
+
 
 
     '''
@@ -60,18 +92,12 @@ if __name__ == '__main__':
     :argument folderName - name of the new folder
     :return full path to the new folder
     '''
-
-
     def creat_new_folder_drive(folderName, oldpath):
         # newpath = r'{}'.format(path_drive)+'/{}'.format(folderName)
         path = os.path.join(oldpath, folderName)
         if not os.path.exists(path):
             os.mkdir(path)
         return path
-
-        # path_folder = path_drive + folderName
-        # os.mkdir(path_folder)
-        # return path_folder
 
 
     '''
@@ -106,40 +132,25 @@ if __name__ == '__main__':
 
     # api_Not_Removed.draw_sentiment_time("subjectivity", "wallstreetbets", "NotRemoved")
 
-    def create_sentiment_afin_textblob():
+    def update_sentiment_afin_textblob(posts,
+                                       afin_sent_all, textblob_sent_all, afin_stat_all, textblob_stat_all,
+                                       afin_sent_removed, textblob_sent_removed, afin_stat_removed,
+                                       textblob_stat_removed,
+                                       afin_sent_notremoved, textblob_sent_notremoved, afin_stat_notremoved,
+                                       textblob_stat_notremoved
+                                       ):
 
-        afin = creat_new_folder_drive("afin", path_drive)
-        textblob = creat_new_folder_drive("textblob", path_drive)
+        # afin = creat_new_folder_drive("afin", path_drive)
+        # textblob = creat_new_folder_drive("textblob", path_drive)
 
-        # statistic path
-        statistic_afin_path = creat_new_folder_drive("afin_statistic", afin + '/')
-        statistic_textblob_path = creat_new_folder_drive("textblob_statistic", textblob + '/')
-
-        # sentiment  path
-        sentiment_afin_path = creat_new_folder_drive("afin_sentiment", afin + '/')
-        sentiment_textblob_path = creat_new_folder_drive("textblob_sentiment", textblob + '/')
-
-        # All
-        afin_sent_all = Sentiment("wallstreetbets", "All")
-        textblob_sent_all = Sentiment("wallstreetbets", "All")
-        afin_stat_all = Statistic("wallstreetbets", "All")
-        textblob_stat_all = Statistic("wallstreetbets", "All")
-
-        # Removed
-        afin_sent_removed = Sentiment("wallstreetbets", "Removed")
-        textblob_sent_removed = Sentiment("wallstreetbets", "Removed")
-        afin_stat_removed = Statistic("wallstreetbets", "Removed")
-        textblob_stat_removed = Statistic("wallstreetbets", "Removed")
-
-        # NotRemoved
-        afin_sent_notremoved = Sentiment("wallstreetbets", "NotRemoved")
-        textblob_sent_notremoved = Sentiment("wallstreetbets", "NotRemoved")
-        afin_stat_notremoved = Statistic("wallstreetbets", "NotRemoved")
-        textblob_stat_notremoved = Statistic("wallstreetbets", "NotRemoved")
-
-        #counter = 0
+        # # statistic path
+        # statistic_afin_path = creat_new_folder_drive("AllData", afin_statistic + '/')
+        # statistic_textblob_path = creat_new_folder_drive("AllData", textblob_statistic + '/')
+        #
+        # # sentiment  path
+        # sentiment_afin_path = creat_new_folder_drive("AllData", afin_sentiment + '/')
+        # sentiment_textblob_path = creat_new_folder_drive("AllData", textblob_sentiment + '/')
         for post in tqdm(posts.find({})):
-            #if counter==10: break
             # All
             afin_sent_all.update_sentiment(post, "month", "afin")
             textblob_sent_all.update_sentiment(post, "month", "textblob")
@@ -157,14 +168,15 @@ if __name__ == '__main__':
             textblob_sent_notremoved.update_sentiment(post, "month", "textblob")
             afin_stat_notremoved.precentage_media(con, post)
             textblob_stat_notremoved.precentage_media(con, post)
+        # draw_sentiment_afin_textblob()
 
-            #counter+=1
 
+    def draw_sentiment_afin_textblob(sentiment_afin_path,sentiment_textblob_path,statistic_afin_path,statistic_textblob_path):
         # All
         afin_sent_all.draw_sentiment_time("afin", fullpath=sentiment_afin_path)
         textblob_sent_all.draw_sentiment_time("textblob", fullpath=sentiment_textblob_path)
-        afin_stat_all.draw_statistic_bars(afin_sent_all,path=statistic_afin_path)
-        textblob_stat_all.draw_statistic_bars(textblob_sent_all,path=statistic_textblob_path)
+        afin_stat_all.draw_statistic_bars(afin_sent_all, path=statistic_afin_path)
+        textblob_stat_all.draw_statistic_bars(textblob_sent_all, path=statistic_textblob_path)
 
         # Removed
         afin_sent_removed.draw_sentiment_time("afin", fullpath=sentiment_afin_path)
@@ -179,185 +191,59 @@ if __name__ == '__main__':
         textblob_stat_notremoved.draw_statistic_bars(textblob_sent_notremoved, path=statistic_textblob_path)
 
 
-    '''
-    This function is creating a graph of 3 bars per month that indicate the amount of positive,netural
-    and negetive posts.
-    '''
-
-
 
 '''
-:argument This method get path to data after that was go through name_entity_recognition.get_entites()
-:argument n is the number of NER to return 
-:argument  collection name is the subreddit name that save in mnongoDB
-
-:returns emotion analysis for the n NERS and save it to csv file.
-'''
+ This function is creating a graph of 3 bars per month that indicate the amount of positive,netural
+ and negetive posts.
+ '''
 
 
-def explore_data_with_NER_and_emotion(n, path_to_read_data, collection_name, path_to_save_plots, Con_DB, category):
-    NER_emotion_df = None
-    flag = True
-    n_common_NER_title_selftext = name_entity.most_N_common_NER(N=n, path=path_to_read_data)
-    NER_BY_Type = name_entity.get_NER_BY_Type(n_common_NER_title_selftext, 'ORG', 'PERSON', 'PRODUCT')
-    for type_item in NER_BY_Type:
-        for NER_item, posts_ids_list in NER_BY_Type[type_item].items():
-            relevant_posts = Con_DB.get_specific_items_by_post_ids(ids_list=posts_ids_list[1])
-            emotion_detection.extract_posts_emotion_rate(relevant_posts)
-            emotion_detection.calculate_post_emotion_rate_mean()
-            # emotion_detection.emotion_plot_for_posts_in_subreddit(date_format='%Y/%m', subreddit_name=collection_name
-            #                                                       , NER=NER_item, path_to_save_plt=path_to_save_plots
-            #    "emotion_rate_mean": [emotion_detection.emotion_posts_avg_of_subreddit.items()],                                                   , category=category)
-            temp_df = pd.DataFrame({
-                "entity": [NER_item],
-                "Angry": [list(emotion_detection.emotion_posts_avg_of_subreddit["Angry"].items())],
-                "Fear": [list(emotion_detection.emotion_posts_avg_of_subreddit["Fear"].items())],
-                "Happy": [list(emotion_detection.emotion_posts_avg_of_subreddit["Happy"].items())],
-                "Sad": [list(emotion_detection.emotion_posts_avg_of_subreddit["Sad"].items())],
-                "Surprise": [list(emotion_detection.emotion_posts_avg_of_subreddit["Surprise"].items())]
-            })
-            if flag:
-                NER_emotion_df = temp_df
-                flag = False
-            else:
-                NER_emotion_df = pd.concat([NER_emotion_df, temp_df], ignore_index=True)
-            # pprint(NER_item)
-            # pprint(emotion_detection.emotion_posts_avg_of_subreddit)
-    File = category + "_NER_emotion_rate_mean_wallstreetbets.csv"
-    file_reader.write_to_csv(df_to_write=NER_emotion_df, path=folder_path,
-                             file_name=File)
+def draw_bars():
+    creatSentiment_and_statistic_Graph()
+    stat_all.draw_statistic_bars(api_all)
 
 
-# def NER_post_quantity(category, path_to_read_data, n):
-#
-#     n_common_NER_title_selftext = name_entity.most_N_common_NER(N=n, path=path_to_read_data)
-#     list_to_save = [(object[0], object[1][0], object[1][1][0]) for object in n_common_NER_title_selftext]
-#
-#     df = pd.DataFrame(data=list_to_save, columns=['NER', 'NER_TYPE', 'number_of_posts'])
-#     file_reader.write_to_csv(path="C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\files\\",
-#                              file_name=category + 'NER_quantity.csv', df_to_write=df)
-#
-#     NER_BY_Type = name_entity.get_NER_BY_Type(n_common_NER_title_selftext, 'ORG', 'PERSON', 'PRODUCT', 'FAC')
-#     file_reader.write_dict_to_json(path="C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\files\\",
-#                                    file_name=category + 'NER_quantity_byType', dict_to_write=NER_BY_Type)
+def topic_4_account():
+    path1 ="G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/topic_modeling/wallstreetbets/post/all"
+    path2 = "G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/topic_modeling/wallstreetbets/post/removed"
 
-if __name__ == '__main__':
+    path_post_all =creat_new_folder_drive("sentiment for topics",path1+'/')
+    path_post_removed = creat_new_folder_drive("sentiment for topics",path2+'/')
 
-    # con = Con_DB()
-    # posts = con.get_cursor_from_mongodb(collection_name="wallstreetbets")
-    # path = 'C:/Users/roik2/PycharmProjects/Reddit_Project/data/document_topic_table_general.csv'  # Change to your path in your computer
-    # # p = stat.get_percent()
-    # topic = creat_Sentiment_Graph_For_Topics(path)
+    creat_Sentiment_Graph_For_Topics(path_post_all)
+    creat_Sentiment_Graph_For_Topics(path_post_removed)
 
-    ##################### SHAI ####################
+def Alldata():
+             # statistic path
+    statistic_afin_path = creat_new_folder_drive("AllData", afin_statistic + '/')
+    statistic_textblob_path = creat_new_folder_drive("AllData", textblob_statistic + '/')
 
-    name_entity = NameEntity()
-    file_reader = FileReader()
-    con_db = Con_DB()
-    emotion_detection = EmotionDetection()
-    # #
-    folder_path = 'C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\files\\'
-    plots_folder_path = 'C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\plots\\'
-    removed_plots_folder_path = plots_folder_path + "Removed\\"
-    not_removed_plots_folder_path = plots_folder_path + "NotRemoved\\"
-    all_plots_folder_path = plots_folder_path + "All\\"
+            # sentiment  path
+    sentiment_afin_path = creat_new_folder_drive("AllData", afin_sentiment + '/')
+    sentiment_textblob_path = creat_new_folder_drive("AllData", textblob_sentiment + '/')
 
-    print("start Removed")
-    posts_list = con_db.get_data_categories(category="Removed", collection_name="wallstreetbets")
+    for i in range(1, 5):
+        print("start AUTH_DB{}".format(i))
+        con.setAUTH_DB(i)
+        postss = con.get_cursor_from_mongodb(collection_name="wallstreetbets")
+        update_sentiment_afin_textblob(postss,
+                                       afin_sent_all, textblob_sent_all, afin_stat_all, textblob_stat_all,
+                                       afin_sent_removed, textblob_sent_removed, afin_stat_removed,
+                                       textblob_stat_removed,
+                                       afin_sent_notremoved, textblob_sent_notremoved, afin_stat_notremoved,
+                                       textblob_stat_notremoved
+                                       )
 
-    print("1")
+    draw_sentiment_afin_textblob(sentiment_afin_path,sentiment_textblob_path,statistic_afin_path,statistic_textblob_path)
+    draw_sentiment_afin_textblob(statistic_afin_path,statistic_textblob_path,sentiment_afin_path,sentiment_textblob_path)
 
-    name_entity.extract_NER_from_data(posts=posts_list,
-                                      file_name_to_save='Removed_wallstreetbets_title_selftext_NER.csv',
-                                      path_to_folder=folder_path)
-    print("2")
-    path = folder_path + 'Removed_wallstreetbets_title_selftext_NER.csv'
-    explore_data_with_NER_and_emotion(n=50, collection_name="wallstreetbets", path_to_read_data=path,
-                                      path_to_save_plots=removed_plots_folder_path, Con_DB=con_db
-                                      , category="Removed")
-
-
-    print("start Not Removed")
-    posts_list = con_db.get_data_categories(category="NotRemoved", collection_name="wallstreetbets")
-
-    print("1")
-    name_entity.extract_NER_from_data(posts=posts_list,
-                                      file_name_to_save='NotRemoved_wallstreetbets_title_selftext_NER.csv',
-                                      path_to_folder=folder_path)
-
-    print("2")
-    path = folder_path + 'NotRemoved_wallstreetbets_title_selftext_NER.csv'
-    explore_data_with_NER_and_emotion(n=50, collection_name="wallstreetbets", path_to_read_data=path,
-                                      path_to_save_plots=not_removed_plots_folder_path, Con_DB=con_db
-                                      , category="NotRemoved")
-
-    print("start All")
-    posts_list = con_db.get_data_categories(category="All", collection_name="wallstreetbets")
-
-    print("1")
-    name_entity.extract_NER_from_data(posts=posts_list,
-                                      file_name_to_save='All_wallstreetbets_title_selftext_NER.csv',
-                                      path_to_folder=folder_path)
-
-    print("2")
-    path = folder_path + 'All_wallstreetbets_title_selftext_NER.csv'
-    explore_data_with_NER_and_emotion(n=50, collection_name="wallstreetbets", path_to_read_data=path,
-                                      path_to_save_plots=all_plots_folder_path, Con_DB=con_db
-                                      , category="All")
-
-
-    ########################## NER QUANTITY ###############################
-
-    # path = folder_path + 'Removed_wallstreetbets_title_selftext_NER.csv'
-    # NER_post_quantity(path_to_read_data=path, category="Removed", n=50)
-    #
-    # path = folder_path + 'NotRemoved_wallstreetbets_title_selftext_NER.csv'
-    # NER_post_quantity(path_to_read_data=path, category="NotRemoved", n=50)
-    #
-    # path = folder_path + 'All_wallstreetbets_title_selftext_NER.csv'
-    # NER_post_quantity(path_to_read_data=path, category="All", n=50)
-    #
-    # print("start Removed")
-    # posts_list = con_db.get_data_categories(category="Removed", collection_name="wallstreetbets")
-    # print("1")
-    # name_entity.extract_NER_from_data(posts=posts_list,
-    #                                   file_name_to_save='Removed_wallstreetbets_title_selftext_NER.csv',
-    #                                   path_to_folder=folder_path)
-
-    # print("start Not Removed")
-    # posts_list = con_db.get_data_categories(category="NotRemoved", collection_name="wallstreetbets")
-    # print("1")
-    # name_entity.extract_NER_from_data(posts_list, 'NotRemoved_wallstreetbets_title_selftext_NER.csv', folder_path)
-    #
-    # print("start All")
-    # posts_list = con_db.get_data_categories(category="All", collection_name="wallstreetbets")
-    # print("1")
-    # name_entity.extract_NER_from_data(posts_list, 'All_wallstreetbets_title_selftext_NER.csv', folder_path)
-
-
-    ########################## WORD CLOUD ###################################
-
-    # from wordcloud import WordCloud
-    # from matplotlib import pyplot as plt
-    # from db_utils.FileReader import FileReader
-    # file_reader = FileReader()
-    # df = file_reader.read_from_csv(path='C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\files\\RemovedNER_quantity.csv')
-    # lst = []
-    # for index, row in df.iterrows():
-    #     lst.append(row['NER'])
-    # NER_words = " ".join(lst)
-    # wordcloud = WordCloud().generate(NER_words)
-    # # Display the generated image:
-    # plt.imshow(wordcloud)
-    # plt.savefig("C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\word_cloud_removed")
-
-    def draw_bars():
-        creatSentiment_and_statistic_Graph()
-        stat_all.draw_statistic_bars(api_all)
+topic_4_account()
+#Alldata()
 
 # p = stat.get_percent()
 # draw_bars()
 # topic = creat_Sentiment_Graph_For_Topics(path_drive="")
 
-create_sentiment_afin_textblob()
+# update_sentiment_afin_textblob()
 # set = creatSentiment_and_statistic_Graph()
+

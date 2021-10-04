@@ -1,5 +1,3 @@
-import datetime
-
 import pymongo
 import os
 from dotenv import load_dotenv
@@ -25,8 +23,11 @@ removed post that have comments = 4187
 class Con_DB:
 
     def __init__(self):
-        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB1"))
+        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB"))
         self.posts_cursor = None
+
+    def setAUTH_DB(self,num):
+        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB{}".format(num)))
 
     def get_posts_text(self, posts, name):
         return posts.find({'{}'.format(name): {"$exists": True}})
@@ -37,7 +38,7 @@ class Con_DB:
             "T")
         return time
 
-    def get_cursor_from_mongodb(self, db_name="reddit", collection_name="pushift_api"):
+    def get_cursor_from_mongodb(self, db_name="reddit", collection_name=os.getenv("COLLECTION_NAME")):
         '''
         This function is return the posts from mongoDB
         :argument db_name: name of the db that you want to connect. TYPE- str
@@ -57,21 +58,17 @@ class Con_DB:
     comment return Array that the comments separated by '..', '...' 
     '''
 
-    def set_client(self, i):
-        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB{}".format(i)))
-
     def get_text_from_post_OR_comment(self, object, post_or_comment):
         if post_or_comment == 'post':
             id = object['pushift_api']['id']
-            created = object['pushift_api']['created_utc'][0]
+            created = object['reddit_api']['post']['created_utc'][0]
             text = object['pushift_api']['title']
-            is_removed = self.is_removed(object, "post", "Removed")
 
             if "selftext" in object['pushift_api'].keys() and not object['pushift_api']["selftext"].__contains__(
                     "[removed]") and object['pushift_api']["selftext"] != "[deleted]":
                 text = text + " " + object['pushift_api']["selftext"]
 
-            return [[text, created, id, is_removed]]
+            return [text, created, id]
 
         elif post_or_comment == 'comment':
             res = []
@@ -91,7 +88,12 @@ class Con_DB:
     def insert_to_db(self, reddit_post):
         self.posts_cursor.insert_one(reddit_post)
 
-    def add_filed(self, data, filed_name='reddit_or_pushshift', collection_name="wallstreetbets"):
+    def update_to_db(self, Id, reddit_post):
+        myquery = {"post_id": Id}
+        newvalues = {"$set": {"reddit_api": reddit_post}}
+        self.posts_cursor.update_one(myquery, newvalues)
+
+    def add_filed(self, data, filed_name='reddit_or_pushshift', collection_name=os.getenv("COLLECTION_NAME")):
         '''
            This function is adding filed to post at mongoDB
            :argument filed_name: name of the field you want to add. TYPE- str
@@ -151,7 +153,7 @@ class Con_DB:
         for post in posts.find({}):
             if 'selftext' in post['pushift_api'].keys():
                 if category == "Removed":
-                    if post['pushift_api']['selftext'] == "[removed]":
+                    if post['reddit_api']['post']['selftext'] == "[removed]":
                         posts_to_return.append(post)
 
                 elif category == "NotRemoved":
@@ -165,7 +167,6 @@ class Con_DB:
     def is_removed(self, post, post_comment, category):
         if post_comment == "post":
             if 'selftext' in post['reddit_api']['post'].keys():
-
                 if category == "Removed":
                     if post['reddit_api']['post']['selftext'].__contains__("[removed]"):
                         return True
@@ -202,11 +203,11 @@ class Con_DB:
 
 if __name__ == '__main__':
     con_db = Con_DB()
-    posts_cursor = con_db.get_cursor_from_mongodb(collection_name="wallstreetbets")
-    # con_db.reoder_mongo("wallstreetbets")
+    posts_cursor = con_db.get_cursor_from_mongodb(collection_name=os.getenv("COLLECTION_NAME"))
+    # con_db.reoder_mongo(os.getenv("COLLECTION_NAME"))
     # con_db.add_filed(filed_name='most_updated_data', data=None)
     # for obj in posts_cursor.find({}):
     #     a = con_db.get_text_from_post_OR_comment(object=obj, post_or_comment='comment')
     #     print(a)
 
-    pprint(con_db.get_specific_items_by_post_ids(ids_list=['hjac6l', 'hjadxl', 'hjaa0v']))
+    # pprint(con_db.get_specific_items_by_post_ids(ids_list=['hjac6l', 'hjadxl', 'hjaa0v']))
