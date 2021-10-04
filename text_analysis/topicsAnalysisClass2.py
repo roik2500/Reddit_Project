@@ -7,7 +7,7 @@ import pandas as pd
 import spacy
 from gensim import corpora
 import gensim
-from gensim.models import CoherenceModel, LdaModel
+from gensim.models import CoherenceModel, LdaModel, LdaMulticore, TfidfModel
 from matplotlib import pyplot as plt
 from spacy.lang.en import English
 import nltk
@@ -62,7 +62,7 @@ def tokenize(text):
 def prepare_text_for_lda(text):
     en_stop = set(nltk.corpus.stopwords.words('english'))
     tokens = tokenize(text)
-    tokens = [token for token in tokens if len(token) > 4]
+    tokens = [token for token in tokens if len(token) > 2]
     tokens = [token for token in tokens if token not in en_stop]
     tokens = [get_lemma(token) for token in tokens]
     return tokens
@@ -77,8 +77,8 @@ def convert_tuples_to_dict(tup):
 
 class TopicsAnalysis:
     def __init__(self, src_name, rmovd_flag, prep_data, post_comment):
-        self.limit = 80
-        self.start = 2
+        self.limit = 50
+        self.start = 20
         self.step = 5
         self.removed_flag = rmovd_flag
         self.subreddit = src_name
@@ -103,24 +103,9 @@ class TopicsAnalysis:
         self.text_data = self.load_pickle("text_data")
         self.id_list_month = convert_tuples_to_dict(self.id_list)
 
-    # def prepare_data(self):
-    #     # for x in tqdm(self.data_cursor):
-    #     #     x_reddit = x["reddit_api"]["post"]
-    #     #     month = int(x_reddit["created_utc"][0].split('-')[1])
-    #     #     id_lst.append((x["post_id"], month))
-    #     # pickle.dump(id_lst, open(self.dir+'/id_lst.pkl', 'wb'))
-    #     id_lst = self.load_id_list()
-    #     infile = open(self.dir+"/corpus.pkl", 'rb')
-    #     corpus = pickle.load(infile)
-    #     infile.close()
-    #     dic = corpora.Dictionary.load(self.dir+"/dictionary.gensim")
-    #     for j, k in id_lst:
-    #         self.load_dic_cor(k)
-    #     return corpus, dic
-
     def load_dic_cor(self, k):
         self.dictionary = corpora.Dictionary.load(self.dir + "/{}/dictionary.gensim".format(k))
-        infile = open(self.dir + "/{}/corpus.pkl".format(k), 'rb')
+        infile = open(self.dir + "/{}/corpus_tfidf.pkl".format(k), 'rb')
         self.corpus = pickle.load(infile)
         infile.close()
 
@@ -133,7 +118,7 @@ class TopicsAnalysis:
     def prepare_data(self):
         id_lst, text_data = [], {}
         counter = 0
-        for k in range(1, 5):
+        for k in range(1, 2):
             self.con_db.set_client(k)
             self.data_cursor = self.con_db.get_cursor_from_mongodb(collection_name=self.src_name).find({})
             for x in tqdm(self.data_cursor):
@@ -146,19 +131,6 @@ class TopicsAnalysis:
                         id_lst.append((Id, month))
                         tokens = prepare_text_for_lda(text)
                         text_data.setdefault(month, []).append(tokens)
-                # # if counter == 100:
-                # #     break
-                # x_reddit = x["reddit_api"]["post"]
-                # x_pushift = x["pushift_api"]
-                # if self.removed_flag or ("selftext" in x_reddit and x_reddit["selftext"].__contains__("[removed]")):
-                #     month = int(x_reddit["created_utc"][0].split('-')[1])
-                #     id_lst.append((x["post_id"], month))
-                #     tokens = prepare_text_for_lda(x_pushift["title"])
-                #     if "selftext" in x_pushift and not x_pushift["selftext"].__contains__("[removed]") and \
-                #             x_pushift["selftext"] != "[deleted]":
-                #         tokens.extend(prepare_text_for_lda(x_pushift["selftext"]))
-                #     text_data.setdefault(month, []).append(tokens)
-                #     # text_data[month].append(tokens)
                         counter += 1
 
         pickle.dump(id_lst, open(self.dir+'/id_lst.pkl', 'wb'))
@@ -171,48 +143,21 @@ class TopicsAnalysis:
             dic = corpora.Dictionary(text_data[k])
             dic.save('{}/dictionary.gensim'.format(directory))
             corpus = [dic.doc2bow(text) for text in text_data[k]]
+            tfidf = TfidfModel(corpus)
+            corpus_tfidf = tfidf[corpus]
             pickle.dump(corpus, open('{}/corpus.pkl'.format(directory), 'wb'))
+            pickle.dump(corpus_tfidf, open('{}/corpus_tfidf.pkl'.format(directory), 'wb'))
         directory = self.dir + "/general"
         pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
         # if not os.path.exists(directory):
         #     os.mkdir(directory)
         dic = corpora.Dictionary(list(text_data.values())[0])
         corpus = [dic.doc2bow(text) for txt_data in list(text_data.values()) for text in txt_data]
+        tfidf = TfidfModel(corpus)
+        corpus_tfidf = tfidf[corpus]
         pickle.dump(corpus, open(directory+'/corpus.pkl', 'wb'))
+        pickle.dump(corpus_tfidf, open('{}/corpus_tfidf.pkl'.format(directory), 'wb'))
         dic.save(directory+'/dictionary.gensim')
-        # return corpus, dic, id_lst, text_data
-    # def prepare_data(self):
-    #     id_lst, text_data = [], {}
-    #     counter = 0
-    #     for x in tqdm(self.data_cursor):
-    #         if counter == 100:
-    #             break
-    #         x_reddit = x["reddit_api"]["post"]
-    #         x_pushift = x["pushift_api"]
-    #         if "selftext" in x_reddit and x_reddit["selftext"].__contains__("[removed]"):
-    #             month = int(x_reddit["created_utc"][0].split('-')[1])
-    #             id_lst.append((x["post_id"], month))
-    #             tokens = prepare_text_for_lda(x_pushift["title"])
-    #             if "selftext" in x_pushift and not x_pushift["selftext"].__contains__("[removed]") and \
-    #                     x_pushift["selftext"] != "[deleted]":
-    #                 tokens.extend(prepare_text_for_lda(x_pushift["selftext"]))
-    #             text_data.setdefault(month, []).append(tokens)
-    #             # text_data[month].append(tokens)
-    #         counter += 1
-    #     pickle.dump(id_lst, open(self.dir+'/id_lst.pkl', 'wb'))
-    #     for k in text_data:
-    #         directory = self.dir+"/{}".format(k)
-    #         if not os.path.exists(directory):
-    #             os.mkdir(directory)
-    #         self.dictionary_dict[k] = corpora.Dictionary(text_data[k])
-    #         self.dictionary_dict[k].save(self.dir+'/{}/dictionary.gensim'.format(k))
-    #         self.corpus_dict[k] = [self.dictionary_dict[k].doc2bow(text) for text in text_data[k]]
-    #         pickle.dump(self.corpus_dict[k], open(self.dir+'/{}/corpus.pkl'.format(k), 'wb'))
-    #     dic = corpora.Dictionary(list(text_data.values())[0])
-    #     corpus = [dic.doc2bow(text) for txt_data in list(text_data.values()) for text in txt_data]
-    #     pickle.dump(corpus, open(self.dir+'/corpus.pkl', 'wb'))
-    #     dic.save(self.dir+'/dictionary.gensim')
-    #     return corpus, dic, id_lst, text_data
 
     def topics_exp(self, text_data, month_name):
         self.perplexity_values = []
@@ -266,7 +211,7 @@ class TopicsAnalysis:
         # else:
         #     corp = self.corpus_dict[month]
         #     dic = self.dictionary_dict[month]
-        ldamodel = gensim.models.ldamodel.LdaModel(corpus=corp, num_topics=num_of_topic, id2word=dic, passes=15)
+        ldamodel = LdaMulticore(corpus=corp, num_topics=num_of_topic, id2word=dic, passes=15)
         perplexity_value = ldamodel.log_perplexity(corp)
         # Compute Coherence Score
         coherence_model_lda = CoherenceModel(model=ldamodel, texts=text_data, dictionary=dic, coherence='c_v')
@@ -373,7 +318,7 @@ class TopicsAnalysis:
 
 def run_model(key, id_lst, txt_data):
     topics.load_dic_cor(str(key))
-    if prepare_data:
+    if prepare_models:
         models = topics.topics_exp(txt_data, key)
     else:
         models = topics.load_models(key)
@@ -385,19 +330,13 @@ def run_model(key, id_lst, txt_data):
 
 if __name__ == "__main__":
     regex_lda = re.compile('(model*.*gensim$)')
-    source_name, source_type = "wallstreetbets", "mongo"
-    prepare_data = True  # if true load data from mongo and prapre it. else load models from disk
-    post_comment_flag = "comment"
-    for i in range(1, 2):
+    source_name, source_type = "wallstreetbets_expr", "mongo"
+    prepare_data = True  # if true load data from mongo and prapre it. else load dic and corp from disk
+    prepare_models = True  # if true create models. else load models from disk
+    post_comment_flag = "post"
+    for i in range(0, 1):
         removed_flag = i  # if True its all data, if False its only the removed
         topics = TopicsAnalysis(source_name, removed_flag, prepare_data, post_comment_flag)
-        # topics.load_dic_cor("general")
-        # if prepare_data:
-        #     models = topics.topics_exp(list(topics.text_data.values())[0], "general")
-        # else:
-        #     models = topics.load_models("general")
-        # topics.use_model(models[0], topics.id_list, 'general-best')
-        # topics.use_model(models[1], topics.id_list, 'general-second_best')
         rng = list(topics.id_list_month.keys())
         rng.append("general")
         for month_key in tqdm(rng):
@@ -409,18 +348,3 @@ if __name__ == "__main__":
                 ids_lst = topics.id_list_month[month_key]
                 txt_dt = topics.text_data[month_key]
             run_model(month_key, ids_lst, txt_dt)
-
-    # for mod in tqdm(models):
-    #     logging.info("{} topics model using".format(mod))
-    #     # if mod == 4 or mod == 6 or mod == 8 or mod == 12:
-    #     #     continue
-    #     if mod == 'general':
-    #         # if type(models[mod][0]) != int:
-    #         topics.use_model(models[mod][0], topics.id_list, mod + '_best')
-    #         # if type(models[mod][1]) != int:
-    #         topics.use_model(models[mod][1], topics.id_list, mod + '_second_best')
-    #     else:
-    #         # if type(models[mod][0]) != int:
-    #         topics.use_model(models[mod][0], topics.id_list_month[mod], str(mod) + '_best')
-    #         # if type(models[mod][1]) != int:
-    #         topics.use_model(models[mod][1], topics.id_list_month[mod], str(mod) + '_second_best')
