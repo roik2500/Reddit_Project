@@ -1,5 +1,5 @@
-from psaw import PushshiftAPI
-from pmaw import PushshiftAPI as PushshiftApiPmaw
+# from psaw import PushshiftAPI
+# from pmaw import PushshiftAPI as PushshiftApiPmaw
 import datetime
 import requests
 import json
@@ -28,10 +28,10 @@ class FileReader:
         return df
 
     def write_to_csv(self, path, file_name, df_to_write):
-        if path[-1:] == '\\':
+        if path[-1:] == '/':
             df_to_write.to_csv(path + file_name)
         else:
-            df_to_write.to_csv(path + '\\' + file_name)
+            df_to_write.to_csv(path + '/' + file_name)
 
     def write_dict_to_json(self, path, file_name, dict_to_write):
         file = path + file_name + '.json'

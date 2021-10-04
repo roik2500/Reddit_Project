@@ -5,16 +5,18 @@ import os
 from pprint import pprint
 
 class Statistic:
-    def __init__(self,k):
+    def __init__(self):
         # create a new object of connection to DB
-        con = Con_DB(k)
-        post_collection = con.get_cursor_from_mongodb(collection_name=os.getenv("COLLECTION_NAME"))
-        self.posts = [post for post in post_collection.find({})]
+        con = Con_DB()
+        self.posts = con.get_cursor_from_mongodb(db_name='reddit',
+                                                     collection_name=os.getenv("COLLECTION_NAME")).find({})
+        # self.posts = [post for post in post_collection.find({})]
         # self.df=pd.DataFrame(p)
         # pushshift_collection = con.get_posts_from_mongodb(collection_name="pushift_api")
         # self.pushshift_posts = [post for post in pushshift_collection.find({})]
 
-        self.df_size = len(self.posts)
+        # self.df_size = len(self.posts)
+        self.df_size = 0
 
         self.user_deleted = 0
         self.removed = 0
@@ -52,6 +54,7 @@ class Statistic:
                 self.removedP_and_selftextR += 1
                 print(post['post_id'])
                 print()
+            self.df_size+=1
 
         print("deleted: ", self.percentage(self.user_deleted),
               "removed: ", self.percentage(self.removed),
@@ -93,12 +96,12 @@ class Statistic:
         print("number_of_removed_comments {}".format(number_of_removed_comments))
         print("number_of_deleted_comments {}".format(number_of_deleted_comments))
         return number_of_removed_comments
+
+
 if __name__ == '__main__':
-    total_removed = 0
-    for k in range(1, 5):
-        s = Statistic(k)
-        s.deleted()
-        total_removed += s.number_of_comments()
-        print( " NEWWWWW  {}".format(k))
+
+    s = Statistic()
+    s.deleted()
+    total_removed = s.number_of_comments()
 
     print("total_removed {}".format(total_removed))

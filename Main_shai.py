@@ -20,10 +20,12 @@ Creating a new folder in Google drive.
 :argument folderName - name of the new folder
 :return full path to the new folder
 '''
-def creat_new_folder_drive(folderName):
-    path_folder = path_drive + folderName
-    os.mkdir(path_folder)
-    return path_folder
+def creat_new_folder_drive(folderName, oldpath):
+    # newpath = r'{}'.format(path_drive)+'/{}'.format(folderName)
+    path = os.path.join(oldpath, folderName)
+    if not os.path.exists(path):
+        os.mkdir(path)
+    return path
 
 
 '''
@@ -65,11 +67,13 @@ def get_emotion_to_NER(Con_DB, NER_BY_Type, NER_emotion_df, category, collection
                                                                   category=category)
             temp_df = pd.DataFrame({
                 "entity": [NER_item],
-                "Angry": [list(emotion_detection.emotion_posts_avg_of_subreddit["Angry"].items())],
+                "Disgust": [list(emotion_detection.emotion_posts_avg_of_subreddit["Disgust"].items())],
+                "Others": [list(emotion_detection.emotion_posts_avg_of_subreddit["Others"].items())],
+                "Anger": [list(emotion_detection.emotion_posts_avg_of_subreddit["Anger"].items())],
                 "Fear": [list(emotion_detection.emotion_posts_avg_of_subreddit["Fear"].items())],
-                "Happy": [list(emotion_detection.emotion_posts_avg_of_subreddit["Happy"].items())],
-                "Sad": [list(emotion_detection.emotion_posts_avg_of_subreddit["Sad"].items())],
-                "Surprise": [list(emotion_detection.emotion_posts_avg_of_subreddit["Surprise"].items())]
+                "Surprise": [list(emotion_detection.emotion_posts_avg_of_subreddit["Surprise"].items())],
+                "Sadness": [list(emotion_detection.emotion_posts_avg_of_subreddit["Sadness"].items())],
+                "Joy": [list(emotion_detection.emotion_posts_avg_of_subreddit["Joy"].items())]
             })
             if flag:
                 NER_emotion_df = temp_df
@@ -154,13 +158,13 @@ if __name__ == '__main__':
 
     data_cursor = con_db.get_cursor_from_mongodb(db_name='reddit', collection_name=COLLECTION_NAME).find({})
 
-    resource_path = PATH_DRIVE + 'resources\\'
-    plots_folder_path = PATH_DRIVE + 'plots\\'
-    emotion_plot_folder_path = PATH_DRIVE + 'emotion_plots\\'
-    word_cloud_folder_path = PATH_DRIVE + 'word_cloud\\'
-    removed_plots_folder_path = plots_folder_path + "Removed\\"
-    not_removed_plots_folder_path = plots_folder_path + "NotRemoved\\"
-    all_plots_folder_path = plots_folder_path + "All\\"
+    resource_path = PATH_DRIVE + 'resources/'
+    plots_folder_path = PATH_DRIVE + 'plots/'
+    emotion_plot_folder_path = PATH_DRIVE + 'emotion_plots/'
+    word_cloud_folder_path = PATH_DRIVE + 'word_cloud/'
+    removed_plots_folder_path = plots_folder_path + "Removed/"
+    not_removed_plots_folder_path = plots_folder_path + "NotRemoved/"
+    all_plots_folder_path = plots_folder_path + "All/"
 
     print("start Removed")
     print("1")
@@ -169,7 +173,7 @@ if __name__ == '__main__':
                                                                            path_to_read_data=resource_path,
                                                                            path_to_save_plt=plots_folder_path,
                                                                            category="Removed",
-                                                                           subreddit_name=os.getenv("COLLECTION_NAME"))
+                                                                           subreddit_name=COLLECTION_NAME)
 
     name_entity_removed.extract_NER_from_data(posts=data_cursor, con_db=con_db,
                                               file_name_to_save='Removed_{}_title_selftext_NER.csv'.format(COLLECTION_NAME),
