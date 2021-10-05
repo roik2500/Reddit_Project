@@ -1,12 +1,18 @@
-# import requests
+import requests
+import praw
+import os
+from dotenv import load_dotenv
+import datetime
+from api_utils.PushshiftApi import PushshiftApi
+load_dotenv("../.env3")
 #
 # # note that CLIENT_ID refers to 'personal use script' and SECRET_TOKEN to 'token'
-# auth = requests.auth.HTTPBasicAuth('FVJ_dCHfJWeGtkI4ekc9ow', 'lSslynhzT_oHLnKvxjaerTZ3jvbCrQ')
+# auth = requests.auth.HTTPBasicAuth(os.getenv('CLIENT_ID'), os.getenv('CLIENT_SECRET'))
 #
 # # here we pass our login method (password), username, and password
 # data = {'grant_type': 'password',
-#         'username': 'ObjectiveExisting282 ',
-#         'password': 'sH231294'}
+#         "username": os.getenv('USER_NAME'),
+#         "password": os.getenv('PASSWORD')}
 #
 # # setup our header info, which gives reddit a brief description of our app
 # headers = {'User-Agent': 'MyBot/0.0.1'}
@@ -28,15 +34,8 @@
 #                    headers=headers)
 #
 # print(res.json())  # let's see what we get
-#
 
-import praw
-import os
-from dotenv import load_dotenv
-import datetime
-from api_utils.PushshiftApi import PushshiftApi
 
-load_dotenv()
 
 
 class reddit_api:
@@ -59,7 +58,6 @@ class reddit_api:
     async def extract_reddit_data_parallel(self, sub):
         url = sub["permalink"]
         post_from_reddit = self.reddit.request('GET', url)
-
         self.convert_time_format(post_from_reddit[0]['data']['children'][0]['data'])
 
         relevent_data_post_from_reddit = \

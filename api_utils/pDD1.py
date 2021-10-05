@@ -75,21 +75,19 @@ async def main(_submissions_list):
 async def fix_reddit_empty_posts():
     counter = 0
     curs = mycol.find({'reddit_api': []})
-    print("here")
     for post in tqdm(curs):
-        # if counter % 5 == 0:
-        #     t1 = time.time()
-        #     pid = post['post_id']
-        #     push_post = post['pushift_api']
-        #     red_post = await reddit.extract_reddit_data_parallel(push_post)
-        #     red_t = time.time() - t1
-        #     await con_db.update_to_db(Id=pid, reddit_post=red_post)
-        #     upd_t = time.time() - red_t - t1
-        #     logging.info(
-        #         "id: {}, reddit time: {}. update time: {}".format(
-        #             pid, red_t, upd_t))
-        # counter += 1
-        pass
+        if counter % 3 == 0:
+            t1 = time.time()
+            pid = post['post_id']
+            push_post = post['pushift_api']
+            red_post = await reddit.extract_reddit_data_parallel(push_post)
+            red_t = time.time() - t1
+            await con_db.update_to_db(Id=pid, reddit_post=red_post)
+            upd_t = time.time() - red_t - t1
+            logging.info(
+                "id: {}, reddit time: {}. update time: {}".format(
+                    pid, red_t, upd_t))
+        counter += 1
 
 
 if __name__ == '__main__':

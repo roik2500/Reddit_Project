@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from pprint import pprint
 import pandas as pd
 from datetime import datetime
-
 load_dotenv()
 
 '''
@@ -24,7 +23,7 @@ removed post that have comments = 4187
 class Con_DB:
 
     def __init__(self):
-        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB3"))
+        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB"))
         self.posts_cursor = None
 
     def setAUTH_DB(self,num):
@@ -65,7 +64,6 @@ class Con_DB:
             created = object['reddit_api']['post']['created_utc'][0]
             text = object['pushift_api']['title']
             is_removed = self.is_removed(object, "post", "Removed")
-
             if "selftext" in object['pushift_api'].keys() and not object['pushift_api']["selftext"].__contains__(
                     "[removed]") and object['pushift_api']["selftext"] != "[deleted]":
                 text = text + " " + object['pushift_api']["selftext"]
@@ -90,7 +88,7 @@ class Con_DB:
     def insert_to_db(self, reddit_post):
         self.posts_cursor.insert_one(reddit_post)
 
-    def update_to_db(self, Id, reddit_post):
+    async def update_to_db(self, Id, reddit_post):
         myquery = {"post_id": Id}
         newvalues = {"$set": {"reddit_api": reddit_post}}
         self.posts_cursor.update_one(myquery, newvalues)
