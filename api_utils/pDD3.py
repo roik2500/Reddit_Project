@@ -1,7 +1,10 @@
 import datetime
 import asyncio
+import string
 import time
 import logging
+
+import prawcore
 import pymongo
 from api_utils.PushshiftApi import PushshiftApi
 from api_utils.reddit_api import reddit_api
@@ -79,12 +82,13 @@ async def main(_submissions_list):
 
 async def fix_reddit_empty_posts():
     counter = 0
-    curs = mycol.find({'reddit_api': []})
+    # for character in string.ascii_lowercase[12:]:
+    curs = mycol.find({'reddit_api': [], 'post_id': {'$regex': '^k'}})
     for post in tqdm(curs):
-        if counter % 2 == 0:
-            t1 = time.time()
-            pid = post['post_id']
-            push_post = post['pushift_api']
+        t1 = time.time()
+        pid = post['post_id']
+        push_post = post['pushift_api']
+        try:
             red_post = await reddit.extract_reddit_data_parallel(push_post)
             red_t = time.time() - t1
             await con_db.update_to_db(Id=pid, reddit_post=red_post)
@@ -92,8 +96,10 @@ async def fix_reddit_empty_posts():
             logging.info(
                 "id: {}, reddit time: {}. update time: {}".format(
                     pid, red_t, upd_t))
-        counter += 1
-
+        except prawcore.exceptions.NotFound:
+            logging.info('{} returned 404'.format(pid))
+            return
+        pass
 
 if __name__ == '__main__':
     while True:
