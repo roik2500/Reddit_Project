@@ -12,6 +12,7 @@ from tqdm import tqdm
 import calendar
 from db_utils.Con_DB import Con_DB
 
+
 # async def extract_reddit_data_parallel(sub):
 #     url = sub["permalink"]
 #     pushift.convert_time_format(sub)
@@ -45,9 +46,13 @@ async def write_to_mongo(sub, pbar_):
     end_total_time = time.time()
     elapsed_reddit_time = end_reddit_time - end_time
     elapsed_second_insert_time = end_total_time - end_reddit_time
-    logging.info("id: {}, Extract from reddit time: {}. Insert to db first time: {}. Insert to db second time: {}".format(sub["id"], elapsed_reddit_time,
-                                                                                              elapsed_time_first_insert,
-                                                                                              elapsed_second_insert_time))
+    logging.info(
+        "id: {}, Extract from reddit time: {}. Insert to db first time: {}. Insert to db second time: {}".format(
+            sub["id"], elapsed_reddit_time,
+            elapsed_time_first_insert,
+            elapsed_second_insert_time))
+
+
 #
 # async def write_to_mongo(sub, pbar_):
 #     start_time = time.time()
@@ -76,34 +81,25 @@ async def main(_submissions_list):
 
 
 async def fix_reddit_empty_posts():
-    # counter = 0
-    for character in string.ascii_lowercase[7:]:
-        print(character)
-        curs = mycol.find({'reddit_api': [], 'post_id': {'$regex': '^j{}'.format(character)}})
-        print("here")
-        pbar = tqdm(total=50000)
-        await asyncio.gather(*[fix_one_post(post, pbar) for post in curs])
-        # for post in tqdm(curs):
-        #     await fix_one_post(post, pbar)
-
-
-async def fix_one_post(post, pb):
-    t1 = time.time()
-    pid = post['post_id']
-    push_post = post['pushift_api']
-    try:
-        red_post = await reddit.extract_reddit_data_parallel(push_post)
-        red_t = time.time() - t1
-        await con_db.update_to_db(Id=pid, reddit_post=red_post)
-        upd_t = time.time() - red_t - t1
-        logging.info(
-            "id: {}, reddit time: {}. update time: {}".format(
-                pid, red_t, upd_t))
-        pb.update(1)
-    except prawcore.exceptions.NotFound:
-        logging.info('{} returned 404'.format(pid))
-        return
-
+    counter = 0
+    # for character in string.ascii_lowercase[12:]:
+    curs = mycol.find({'reddit_api': [], 'post_id': {'$regex': '^k'}})
+    for post in tqdm(curs):
+        t1 = time.time()
+        pid = post['post_id']
+        push_post = post['pushift_api']
+        try:
+            red_post = await reddit.extract_reddit_data_parallel(push_post)
+            red_t = time.time() - t1
+            await con_db.update_to_db(Id=pid, reddit_post=red_post)
+            upd_t = time.time() - red_t - t1
+            logging.info(
+                "id: {}, reddit time: {}. update time: {}".format(
+                    pid, red_t, upd_t))
+        except prawcore.exceptions.NotFound:
+            logging.info('{} returned 404'.format(pid))
+            return
+        pass
 
 if __name__ == '__main__':
     while True:
