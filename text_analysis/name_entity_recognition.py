@@ -1,5 +1,5 @@
 import spacy
-from spacy import displacy
+# from spacy import displacy
 from db_utils.FileReader import FileReader
 from dotenv import load_dotenv
 import pandas as pd
@@ -89,19 +89,20 @@ class NameEntity:
 
         return NER_by_type
 
-    def extract_NER_from_data(self, posts, file_name_to_save, path_to_folder, save_deduced_data, con_db, is_removed_bool):
+    def extract_NER_from_data(self, posts, file_name_to_save, path_to_folder, save_deduced_data, con_db,
+                              is_removed_bool, post_or_comment_arg):
         name_entity_list = []
         # con = Con_DB()
         # for post in posts.find({}):
         for post in tqdm(posts):
-            keys = post['pushift_api'].keys()
-
-            objects = con_db.get_text_from_post_OR_comment(post_or_comment="post", object=post)
+            objects = con_db.get_text_from_post_OR_comment(post_or_comment=post_or_comment_arg, object=post)
             for object in objects:
-                if object[-1] == is_removed_bool:
-                    name_entity_list.append([object[2], self.get_entites(object[1])])
-                else:# Not removed
-                    name_entity_list.append([object[2], self.get_entites(object[1])])
+                if object[-1] == is_removed_bool:  # is_removed_bool == TRUE == only Removed is_removed_bool == FALSE == only  NOT Removed
+                    name_entity_list.append([object[2], self.get_entites(object[0])])
+                else:  # The other option
+                    continue
+                # else:# Not removed
+                #     name_entity_list.append([object[2], self.get_entites(object[1])])
                 for new_ner_key, NER_type in name_entity_list[-1][1]:
                     if NER_type in ['ORG', 'PERSON', 'PRODUCT']:
                         new_ner_post_id = [object[2]]
@@ -124,8 +125,8 @@ class NameEntity:
             print("save_deduced_data")
             self.save_to_csv(file_name_to_save, name_entity_list, path_to_folder)
             for key, val in self.NER_per_month.items():
-                self.NER_per_month[key] = name_entity.reduce_duplicates(NER_dict=val, delimiter='-')
-            self.file_reader.write_dict_to_json(path=path_to_folder, file_name="NER_per_month",
+                self.NER_per_month[key] = self.reduce_duplicates(NER_dict=val, delimiter='-')
+            self.file_reader.write_dict_to_json(path=path_to_folder, file_name="{}_NER_per_month".format(is_removed_bool),
                                                 dict_to_write=self.NER_per_month)
 
     def save_to_csv(self, file_name_to_save, name_entity_list, path_to_folder):

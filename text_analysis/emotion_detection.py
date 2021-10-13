@@ -27,6 +27,15 @@ from pysentimiento import EmotionAnalyzer
 #                                'night is darkest before dawn. Hang in their fellow 🦍 as tide will change and gotta '
 #                                'have some patience.'))
 
+'''@misc{perez2021pysentimiento,
+      title={pysentimiento: A Python Toolkit for Sentiment Analysis and SocialNLP tasks},
+      author={Juan Manuel Pérez and Juan Carlos Giudici and Franco Luque},
+      year={2021},
+      eprint={2106.09462},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+  link - https://huggingface.co/finiteautomata/bertweet-base-emotion-analysis
+}'''
 
 load_dotenv()
 
@@ -36,17 +45,20 @@ class EmotionDetection:
         self.emotion_dict = {}
         # self.emotion_posts_avg_of_subreddit = {"Angry": {}, "Fear": {},
         #                                        "Happy": {}, "Sad": {}, "Surprise": {}}
-        self.emotion_posts_avg_of_subreddit = {"Disgust": {}, "Others": {},
-                                               "Anger": {}, "Fear": {}, "Surprise": {}, "Sadness": {}, "Joy": {}}
+        self.emotion_posts_avg_of_subreddit = {"Disgust": {}, "Anger": {}, "Fear": {}, "Surprise": {},
+                                               "Sadness": {}, "Joy": {}}
         self.emotion_analyzer = EmotionAnalyzer(lang="en")
 
-    def extract_posts_emotion_rate(self, posts, con_DB):  # posts format: [title + selftext, date, id]
+    def extract_posts_emotion_rate(self, posts, con_DB, post_need_to_extract, post_or_comment_arg):  # posts format: [title + selftext, date, id]
         # self.emotion_dict = {}
         for post in tqdm(posts):
-            items = con_DB.get_text_from_post_OR_comment(object=post, post_or_comment='post')
+            if post_need_to_extract:
+                items = con_DB.get_text_from_post_OR_comment(object=post, post_or_comment=post_or_comment_arg)
+            else:
+                items = post
             for item in items:
-                if item[-1]:
-                    break
+                # if item[-1]:
+                #     break
                 year = int(datetime.strptime(item[1]
                                              , "%Y-%m-%d").date().year)
                 month = int(datetime.strptime(item[1]
@@ -68,7 +80,7 @@ class EmotionDetection:
     def emotion_plot_for_posts_in_subreddit(self, date_format, subreddit_name, NER, path_to_save_plt, category):
 
         x1 = sorted([*self.emotion_posts_avg_of_subreddit["Disgust"]], key=lambda t: datetime.strptime(t, date_format))
-        x2 = sorted([*self.emotion_posts_avg_of_subreddit["Others"]], key=lambda t: datetime.strptime(t, date_format))
+        # x2 = sorted([*self.emotion_posts_avg_of_subreddit["Others"]], key=lambda t: datetime.strptime(t, date_format))
         x3 = sorted([*self.emotion_posts_avg_of_subreddit["Anger"]], key=lambda t: datetime.strptime(t, date_format))
         x4 = sorted([*self.emotion_posts_avg_of_subreddit["Fear"]], key=lambda t: datetime.strptime(t, date_format))
         x5 = sorted([*self.emotion_posts_avg_of_subreddit["Surprise"]], key=lambda t: datetime.strptime(t, date_format))
@@ -76,7 +88,7 @@ class EmotionDetection:
         x7 = sorted([*self.emotion_posts_avg_of_subreddit["Joy"]], key=lambda t: datetime.strptime(t, date_format))
 
         y1 = [*self.emotion_posts_avg_of_subreddit["Disgust"].values()]
-        y2 = [*self.emotion_posts_avg_of_subreddit["Others"].values()]
+        # y2 = [*self.emotion_posts_avg_of_subreddit["Others"].values()]
         y3 = [*self.emotion_posts_avg_of_subreddit["Anger"].values()]
         y4 = [*self.emotion_posts_avg_of_subreddit["Fear"].values()]
         y5 = [*self.emotion_posts_avg_of_subreddit["Surprise"].values()]
@@ -84,9 +96,10 @@ class EmotionDetection:
         y7 = [*self.emotion_posts_avg_of_subreddit["Joy"].values()]
 
         # plot lines
+        # plt.ylim(top=2)
         plt.xticks(rotation=90)
         plt.plot(x1, y1, label="Disgust", linestyle="-")
-        plt.plot(x2, y2, label="Others", linestyle="--")
+        # plt.plot(x2, y2, label="Others", linestyle="--")
         plt.plot(x3, y3, label="Anger", linestyle="-.")
         plt.plot(x4, y4, label="Fear", linestyle=":")
         plt.plot(x5, y5, label="Surprise", linestyle="-")
@@ -102,13 +115,15 @@ class EmotionDetection:
             plt.savefig(path_to_save_plt + '_' + NER + '_' + datetime.now().strftime("%H-%M-%S") + ".jpg",
                         transparent=True)
         plt.show()
+        plt.clf()
+
 
     # date_format  = '%Y/%m' or  "%Y-%m-%d"
     def emotion_plot_for_all_posts_in_subreddit(self, date_format, subreddit_name, path_to_save_plt, category,
                                                 path_to_read_data):
 
         x1 = sorted([*self.emotion_posts_avg_of_subreddit["Disgust"]], key=lambda t: datetime.strptime(t, date_format))
-        x2 = sorted([*self.emotion_posts_avg_of_subreddit["Others"]], key=lambda t: datetime.strptime(t, date_format))
+        # x2 = sorted([*self.emotion_posts_avg_of_subreddit["Others"]], key=lambda t: datetime.strptime(t, date_format))
         x3 = sorted([*self.emotion_posts_avg_of_subreddit["Anger"]], key=lambda t: datetime.strptime(t, date_format))
         x4 = sorted([*self.emotion_posts_avg_of_subreddit["Fear"]], key=lambda t: datetime.strptime(t, date_format))
         x5 = sorted([*self.emotion_posts_avg_of_subreddit["Surprise"]], key=lambda t: datetime.strptime(t, date_format))
@@ -116,7 +131,7 @@ class EmotionDetection:
         x7 = sorted([*self.emotion_posts_avg_of_subreddit["Joy"]], key=lambda t: datetime.strptime(t, date_format))
 
         y1 = [*self.emotion_posts_avg_of_subreddit["Disgust"].values()]
-        y2 = [*self.emotion_posts_avg_of_subreddit["Others"].values()]
+        # y2 = [*self.emotion_posts_avg_of_subreddit["Others"].values()]
         y3 = [*self.emotion_posts_avg_of_subreddit["Anger"].values()]
         y4 = [*self.emotion_posts_avg_of_subreddit["Fear"].values()]
         y5 = [*self.emotion_posts_avg_of_subreddit["Surprise"].values()]
@@ -126,7 +141,7 @@ class EmotionDetection:
         # plot lines
         plt.xticks(rotation=90)
         plt.plot(x1, y1, label="Disgust", linestyle="-")
-        plt.plot(x2, y2, label="Others", linestyle="--")
+        # plt.plot(x2, y2, label="Others", linestyle="--")
         plt.plot(x3, y3, label="Anger", linestyle="-.")
         plt.plot(x4, y4, label="Fear", linestyle=":")
         plt.plot(x5, y5, label="Surprise", linestyle="-")
@@ -219,27 +234,29 @@ class EmotionDetection:
     def calculate_post_emotion_rate_mean(self):
         # self.emotion_posts_avg_of_subreddit = {"Disgust": {}, "Others": {},
         #                                        "Anger": {}, "Fear": {}, "Surprise": {}, "Sadness": {}, "Joy": {}}
+        emotion_rate_normalization = 3
         for emotion in self.emotion_posts_avg_of_subreddit.keys():
             for key, month_posts_emotions in self.emotion_dict.items():
                 self.emotion_posts_avg_of_subreddit[emotion][key] = \
-                    mean([emotion_rate[1].probas[emotion.lower()] for emotion_rate in month_posts_emotions])
+                    mean([emotion_rate[1].probas[emotion.lower()] for emotion_rate in month_posts_emotions]) * emotion_rate_normalization
 
-    def get_plot_and_emotion_rate_from_all_posts_in_category(self, data_cursor, Con_DB,
+    def get_plot_and_emotion_rate_from_all_posts_in_category(self, data_cursor, Con_DB, file_reader,
                                                              path_to_read_data, path_to_save_plt, category,
-                                                             subreddit_name):
+                                                             subreddit_name, post_or_comment_arg):
         print("extract emotion rate")
-        self.extract_posts_emotion_rate(posts=data_cursor, con_DB=Con_DB)
+        self.extract_posts_emotion_rate(posts=data_cursor, con_DB=Con_DB, post_need_to_extract=True,
+                                        post_or_comment_arg=post_or_comment_arg)
         # has_removed=False -> get data that the selftext of post are removed
         #
         print("MEAN")
-        pprint(self.emotion_dict)
+        # pprint(self.emotion_dict)
         self.calculate_post_emotion_rate_mean()
         print("write to disk")
-        pprint(self.emotion_posts_avg_of_subreddit)
+        # pprint(self.emotion_posts_avg_of_subreddit)
         file_name = 'emotion_rate_{}_{}'.format(subreddit_name, category)
         file_reader.write_dict_to_json(path=path_to_read_data,
                                        file_name=file_name,
-                                       dict_to_write=emotion_detection.emotion_posts_avg_of_subreddit)
+                                       dict_to_write=self.emotion_posts_avg_of_subreddit)
         print("plot")
         # self.emotion_posts_avg_of_subreddit = {}
         # self.emotion_dict = {}
@@ -249,25 +266,25 @@ class EmotionDetection:
                                                                   category=category)
 
 
-if __name__ == '__main__':
-    emotion_detection = EmotionDetection()
-    file_reader = FileReader()
-    Con_DB = Con_DB()
-    data_cursor = Con_DB.get_cursor_from_mongodb(db_name='reddit',
-             collection_name='wallstreetbets').find({}).limit(2000)
-
-    emotion_avg_in_month = ["Disgust", "Others", "Anger", "Fear", "Surprise", "Sadness", "Joy"]
-
-    PATH_DRIVE = os.getenv("OUTPUTS_DIR") + 'emotion_detection/'
-    resource_path = PATH_DRIVE + 'resources/'
-    plot_folder_path = PATH_DRIVE + 'plots/'
-
-    emotion_detection.get_plot_and_emotion_rate_from_all_posts_in_category(data_cursor=data_cursor,
-                       Con_DB=Con_DB,
-                       path_to_read_data=resource_path,
-                       path_to_save_plt=plot_folder_path,
-                       category="Removed",
-                       subreddit_name=os.getenv("COLLECTION_NAME"))
+# if __name__ == '__main__':
+#     emotion_detection = EmotionDetection()
+#     file_reader = FileReader()
+#     Con_DB = Con_DB()
+#     data_cursor = Con_DB.get_cursor_from_mongodb(db_name='reddit',
+#              collection_name='wallstreetbets').find({}).limit(2000)
+#
+#     emotion_avg_in_month = ["Disgust", "Others", "Anger", "Fear", "Surprise", "Sadness", "Joy"]
+#
+#     PATH_DRIVE = os.getenv("OUTPUTS_DIR") + 'emotion_detection/'
+#     resource_path = PATH_DRIVE + 'resources/'
+#     plot_folder_path = PATH_DRIVE + 'plots/'
+#
+#     emotion_detection.get_plot_and_emotion_rate_from_all_posts_in_category(data_cursor=data_cursor,
+#                        Con_DB=Con_DB,
+#                        path_to_read_data=resource_path,
+#                        path_to_save_plt=plot_folder_path,
+#                        category="All",
+#                        subreddit_name=os.getenv("COLLECTION_NAME"))
     #
     # emotions = ["Angry", "Fear", "Happy", "Sad", "Surprise"]
     # data_category_df = pd.read_csv(folder_path + "Removed_NER_emotion_rate_mean_wallstreetbets.csv")

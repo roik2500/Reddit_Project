@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from pprint import pprint
 import pandas as pd
 from datetime import datetime
-
 load_dotenv()
 
 '''
@@ -24,7 +23,7 @@ removed post that have comments = 4187
 class Con_DB:
 
     def __init__(self):
-        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB3"))
+        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB"))
         self.posts_cursor = None
 
     def setAUTH_DB(self,num):
@@ -34,7 +33,7 @@ class Con_DB:
         return posts.find({'{}'.format(name): {"$exists": True}})
 
     def convert_time_format(self, comment_or_post):
-        time = datetime.datetime.fromtimestamp(
+        time = datetime.fromtimestamp(
             int(comment_or_post)).isoformat().split(
             "T")
         return time
@@ -46,6 +45,7 @@ class Con_DB:
         :argument collection_name: collection name inside your db name. TYPE- str
         :return: data from mongodb
         '''
+        db_name = 'local'
         mydb = self.myclient[db_name]
         self.posts_cursor = mydb[collection_name]
         return self.posts_cursor
@@ -65,7 +65,6 @@ class Con_DB:
             created = object['reddit_api']['post']['created_utc'][0]
             text = object['pushift_api']['title']
             is_removed = self.is_removed(object, "post", "Removed")
-
             if "selftext" in object['pushift_api'].keys() and not object['pushift_api']["selftext"].__contains__(
                     "[removed]") and object['pushift_api']["selftext"] != "[deleted]":
                 text = text + " " + object['pushift_api']["selftext"]
@@ -74,14 +73,19 @@ class Con_DB:
 
         elif post_or_comment == 'comment':
             res = []
+            created = ''
             for obj in object['reddit_api']['comments']:
+                # if "body" in obj["data"] and not obj['data']['body'].__contains__(
+                #         "[removed]") and obj['data']['body'] != "[deleted]":
+                Id = obj['data']['id']
+                if 'created_utc' in obj['data']:
+                    created = self.convert_time_format(obj['data']['created_utc'])[0]
+                is_removed = self.is_removed(obj, "comment", "Removed")
+                text = ''
                 if "body" in obj["data"] and not obj['data']['body'].__contains__(
                         "[removed]") and obj['data']['body'] != "[deleted]":
-                    Id = obj['data']['id']
-                    created = self.convert_time_format(obj['data']['created_utc'])[0]
                     text = obj['data']['body']
-                    is_removed = self.is_removed(obj, "comment", "Removed")
-                    res.append([text, created, Id, is_removed])
+                res.append([text, created, Id, is_removed])
             return res
             # return [[obj['data']['body'], self.convert_time_format(obj['data']['created_utc'])[0], obj['data'][
             # 'id'], self.is_removed(obj, "comment", "Removed")] for obj in object['reddit_api']['comments']]  #
@@ -90,7 +94,7 @@ class Con_DB:
     def insert_to_db(self, reddit_post):
         self.posts_cursor.insert_one(reddit_post)
 
-    def update_to_db(self, Id, reddit_post):
+    async def update_to_db(self, Id, reddit_post):
         myquery = {"post_id": Id}
         newvalues = {"$set": {"reddit_api": reddit_post}}
         self.posts_cursor.update_one(myquery, newvalues)
@@ -170,24 +174,23 @@ class Con_DB:
         if post_comment == "post":
             if 'selftext' in post['reddit_api']['post'].keys():
                 if category == "Removed":
-                    if post['reddit_api']['post']['selftext'].__contains__("[removed]"):
+                    if post['reddit_api']['post']['selftext'].__contains__('[removed]'):
                         return True
                     return False
                 elif category == "NotRemoved":
-                    if not post['reddit_api']['post']['selftext'].__contains__("[removed]"):
+                    if not post['reddit_api']['post']['selftext'].__contains__('[removed]'):
                         return True
             return False
         elif post_comment == "comment":
             if 'body' in post["data"].keys():
-
                 if category == "Removed":
-                    if post["data"]['body'].__contains__("[removed]"):
+                    if post["data"]['body'].__contains__('[removed]'):
                         return True
                     return False
                 elif category == "NotRemoved":
-                    if not post["data"]['body'].__contains__("[removed]"):
+                    if not post["data"]['body'].__contains__('[removed]'):
                         return True
-            return False
+            return True  # was False and shai change to True because if there is no body so it was removed
 
     '''
        This function reading Data from CSV file
@@ -201,15 +204,3 @@ class Con_DB:
     # f = open(path,encoding='UTF8')
     # csv_reader = csv.reader(f)
     # return csv_reader
-
-
-if __name__ == '__main__':
-    con_db = Con_DB()
-    posts_cursor = con_db.get_cursor_from_mongodb(collection_name=os.getenv("COLLECTION_NAME"))
-    # con_db.reoder_mongo(os.getenv("COLLECTION_NAME"))
-    # con_db.add_filed(filed_name='most_updated_data', data=None)
-    # for obj in posts_cursor.find({}):
-    #     a = con_db.get_text_from_post_OR_comment(object=obj, post_or_comment='comment')
-    #     print(a)
-
-    # pprint(con_db.get_specific_items_by_post_ids(ids_list=['hjac6l', 'hjadxl', 'hjaa0v']))

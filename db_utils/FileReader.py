@@ -4,6 +4,8 @@ import datetime
 import requests
 import json
 import pandas as pd
+import ijson
+from tqdm import tqdm
 import pymongo
 import os
 import csv
@@ -20,7 +22,7 @@ class FileReader:
     ''' :return data frame '''
     def read_from_json_to_df(self, PATH):
         df = pd.read_json(PATH, lines=True)
-        df.head()
+        # df.head()
         return df
 
     def read_from_csv(self, path):
@@ -37,6 +39,33 @@ class FileReader:
         file = path + file_name + '.json'
         with open(file, 'w') as fp:
             json.dump(dict_to_write, fp)
+
+    def get_specific_items_by_post_ids_from_json(self, ids_list):
+        text_and_date_list = []
+        with open('C://Users//User//Documents//FourthYear//Project//resources//wallstreetbets_2020_full_.json') as json_file:
+            data = json.load(json_file)
+            for key_id in ids_list:
+                post = data[key_id]
+                text_and_date_list.append(self.get_text_from_post_OR_comment(post, post_or_comment='post'))
+
+        # cursor = self.posts_cursor.find(
+        #     {u'pushift_api.id': {'$in': ids_list}}
+        # )
+        # # return cursor
+        # text_and_date_list = []
+        # for post in cursor:
+        #     text_and_date_list.append(self.get_text_from_post_OR_comment(post, post_or_comment='post'))
+        return text_and_date_list  # [title , selftext ,created_utc, 'id']
+
+    '''
+    @:argument json_file - path to the file to read from
+    @:return return json iterator to the file.
+    '''
+    def get_json_iterator(self, json_file):
+        fj = open(json_file, 'rb')
+        items = ijson.items(fj, 'item')
+        return items
+
 
 # Press the green button in the gutter to run the script.
 # if __name__ == '__main__':
