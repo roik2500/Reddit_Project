@@ -49,7 +49,7 @@ class Con_DB:
         :argument collection_name: collection name inside your db name. TYPE- str
         :return: data from mongodb
         '''
-        db_name = 'local'
+#         db_name = 'local'
         mydb = self.myclient[db_name]
         self.posts_cursor = mydb[collection_name]
         return self.posts_cursor
