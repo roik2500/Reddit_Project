@@ -2,7 +2,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 import numpy as np
-from sklearn.metrics import accuracy_score, precision_recall_fscore_support, mean_squared_error
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import accuracy_score, precision_recall_fscore_support, f1_score, roc_auc_score, mean_squared_error
 from sklearn.feature_selection import SelectKBest
 from sklearn import preprocessing
 from db_utils.FileReader import FileReader
@@ -38,10 +39,10 @@ class Model:
         input_df = pd.DataFrame(data=podtid_emdeding_label, columns=['Post_id', 'embeding', 'label'])
         border = int(self.MAX_POST_NUMBER*0.8)
 
-        self.df_train = np.array(input_df.iloc[:border, :])
+        self.df_train = np.array(input_df.iloc[:border, [0, 1]])
         print('self.df_train.shape', self.df_train.shape)
 
-        self.df_test = np.array(input_df.iloc[border:, :])
+        self.df_test = np.array(input_df.iloc[border:, [0, 1]])
         print('self.df_test.shape', self.df_test.shape)
 
         self.train_labels = self.df_train[:, 2]
@@ -54,7 +55,7 @@ class Model:
 
 
 
-    def get_fit_model(self, model_name):
+    def train_model(self, model_name):
         if model_name == 'LogisticRegression':
             return LogisticRegression(random_state=0).fit(self.df_train, self.train_labels)
 
@@ -62,10 +63,18 @@ class Model:
             return RandomForestClassifier(random_state=0).fit(self.df_train, self.train_labels)
 
         elif model_name == 'DecisionTreeClassifier':
-            return DecisionTreeClassifier(random_state=0).fit(self.df_train, self.train_labels)
-
+            model = DecisionTreeClassifier(random_state=0).fit(self.df_train, self.train_labels)
+            return cross_val_score(model, self.df_train, self.train_labels)
         else:
             return "invalid model"
 
+    def evaluation_indices(self, prediction):
+        accuracy = accuracy_score(self.test_labels, prediction)
+        precision_recall_fscore = precision_recall_fscore_support(self.test_labels, prediction, average='weighted')
+        f1 = f1_score(self.test_labels, prediction)
+        auc_roc_score = roc_auc_score(self.test_labels, prediction)
 
-
+        print("Accuracy: %.2f%%" % (accuracy * 100.0))
+        print("precision: %.2f%%" % (precision_recall_fscore[0] * 100),
+                  " recall: %.2f%%" % (precision_recall_fscore[1] * 100)
+                  , " fscore: %.2f%%" % (precision_recall_fscore[2] * 100))

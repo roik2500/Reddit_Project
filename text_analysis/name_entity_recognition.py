@@ -79,7 +79,7 @@ class NameEntity:
             NER_by_type[word_type] = {}
 
         for key, value in NER_dict:
-            for val_type in value[0]:
+            for val_type in set(value[0]):
                 if val_type not in kwargs_type:
                     continue
                 if key not in NER_by_type[val_type].keys():
@@ -92,17 +92,13 @@ class NameEntity:
     def extract_NER_from_data(self, posts, file_name_to_save, path_to_folder, save_deduced_data, con_db,
                               is_removed_bool, post_or_comment_arg):
         name_entity_list = []
-        # con = Con_DB()
-        # for post in posts.find({}):
         for post in tqdm(posts):
             objects = con_db.get_text_from_post_OR_comment(post_or_comment=post_or_comment_arg, object=post)
             for object in objects:
-                if object[-1] == is_removed_bool:  # is_removed_bool == TRUE == only Removed is_removed_bool == FALSE == only  NOT Removed
+                if object != [] and object[-1] == is_removed_bool:  # is_removed_bool == TRUE == only Removed is_removed_bool == FALSE == only  NOT Removed
                     name_entity_list.append([object[2], self.get_entites(object[0])])
                 else:  # The other option
                     continue
-                # else:# Not removed
-                #     name_entity_list.append([object[2], self.get_entites(object[1])])
                 for new_ner_key, NER_type in name_entity_list[-1][1]:
                     if NER_type in ['ORG', 'PERSON', 'PRODUCT']:
                         new_ner_post_id = [object[2]]

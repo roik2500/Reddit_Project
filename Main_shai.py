@@ -35,29 +35,30 @@ the plot is over a  months in one year.
 :returns emotion analysis for the n NERS and save it to csv file.
 '''
 
-def explore_data_with_NER_and_emotion(n, path_to_read_data, collection_name, path_to_save_plots,
+def explore_data_with_NER_and_emotion(n, path_to_read_data, collection_name, path_to_save_plots, post_or_comment_arg,
                                       Con_DB, category, name_entity, file_reader):
     NER_emotion_df = None
     n_common_NER_title_selftext = name_entity.most_N_common_NER(N=n, path=path_to_read_data)
     NER_BY_Type = name_entity.get_NER_BY_Type(n_common_NER_title_selftext, 'ORG', 'PERSON', 'PRODUCT')
     NER_emotion_df = get_emotion_to_NER(Con_DB, NER_BY_Type, NER_emotion_df, category, collection_name,
-                                        path_to_save_plots)
+                                        path_to_save_plots, post_or_comment_arg)
     # example name of file - "Removed_NER_emotion_rate_mean_wallstreetbets.csv"
     File = "{}_NER_emotion_rate_mean_{}_{}_NERS.csv".format(category, collection_name,n)
     file_reader.write_to_csv(df_to_write=NER_emotion_df, path=resource_path,
                              file_name=File)
 
 
-def get_emotion_to_NER(Con_DB, NER_BY_Type, NER_emotion_df, category, collection_name, path_to_save_plots):
+def get_emotion_to_NER(Con_DB, NER_BY_Type, NER_emotion_df, category, collection_name, path_to_save_plots,
+                       post_or_comment_arg):
     flag = True
     for type_item in NER_BY_Type:
         new_file = "{}{}/".format(path_to_save_plots, str(type_item.replace("\\", "-")))
         if not os.path.exists(new_file):
             os.makedirs(new_file)
         for NER_item, posts_ids_list in NER_BY_Type[type_item].items():
-            relevant_posts = Con_DB.get_specific_items_by_post_ids(ids_list=posts_ids_list[1])
+            relevant_posts = Con_DB.get_specific_items_by_post_ids(ids_list=posts_ids_list[1], post_or_comment_arg=post_or_comment_arg)
             emotion_detection.extract_posts_emotion_rate(relevant_posts, Con_DB, post_need_to_extract=False,
-                                                         post_or_comment_arg="post")
+                                                         post_or_comment_arg=post_or_comment_arg)
             emotion_detection.calculate_post_emotion_rate_mean()
             emotion_detection.emotion_plot_for_posts_in_subreddit(date_format='%Y/%m', subreddit_name=collection_name
                                                                   , NER=NER_item, path_to_save_plt=new_file,
@@ -97,12 +98,12 @@ def NER_post_quantity(category, path_to_read_data, n, name_entity, resource_path
 
 
 def explore_data_with_emotion_to_NER_per_month(Con_DB, file_reader,  path_to_read_data, category, collection_name,
-                                               path_to_save_plots):
+                                               path_to_save_plots, post_or_comment_arg):
     NER_emotion_df = None
     # should return python dict when key is date and values another diat that keys is NERs and value is ids_list
     items = file_reader.read_from_json_to_dict(path_to_read_data)
     NER_emotion_df = get_emotion_to_NER(Con_DB, items, NER_emotion_df, category, collection_name,
-                                            path_to_save_plots)
+                                            path_to_save_plots, post_or_comment_arg)
     File = category + "_NER_emotion_per_month.csv"
     file_reader.write_to_csv(df_to_write=NER_emotion_df, path=resource_path,
                              file_name=File)
@@ -207,7 +208,6 @@ def get_wordcloud_from_json(csv_file_name_to_read, category):
 
 
 
-
 if __name__ == '__main__':
 
     name_entity_not_removed = NameEntity()
@@ -225,7 +225,7 @@ if __name__ == '__main__':
     COLLECTION_NAME = os.getenv("COLLECTION_NAME")
     PATH_DRIVE = os.getenv("OUTPUTS_DIR") + 'emotion_detection/posts/'
 
-    data_cursor = con_db.get_cursor_from_mongodb(db_name='local', collection_name=COLLECTION_NAME).find({}).limit(200)
+    data_cursor = con_db.get_cursor_from_mongodb(db_name='local', collection_name=COLLECTION_NAME).find({}).limit(30000)
 
     resource_path = PATH_DRIVE + 'resources/'
     plots_folder_path = PATH_DRIVE + 'plots/'
@@ -238,36 +238,37 @@ if __name__ == '__main__':
 
     print("start Removed")
     print("1")
-    # emotion_detection_removed.get_plot_and_emotion_rate_from_all_posts_in_category(data_cursor=data_cursor,
-    #                                                                        Con_DB=con_db,
-    #                                                                        path_to_read_data=resource_path,
-    #                                                                        path_to_save_plt=removed_plots_folder_path,
-    #                                                                        category="All",
-    #                                                                        subreddit_name=COLLECTION_NAME,
-    #                                                                        file_reader=file_reader,
-    #                                                                        post_or_comment_arg='post')
-    #
-    # data_cursor = con_db.get_cursor_from_mongodb(db_name='reddit', collection_name=COLLECTION_NAME).find({})
-    #
-    # name_entity_removed.extract_NER_from_data(posts=data_cursor, con_db=con_db,
-    #                                           file_name_to_save='Removed_{}_title_selftext_NER.csv'.format(COLLECTION_NAME),
-    #                                           path_to_folder=resource_path, save_deduced_data=True,
-    #                                           is_removed_bool=True, post_or_comment_arg='post')
-    #
-    # print("2")
-    # path = resource_path + 'Removed_{}_title_selftext_NER.csv'.format(COLLECTION_NAME)
-    # explore_data_with_NER_and_emotion(n=50, collection_name=COLLECTION_NAME, path_to_read_data=path,
-    #                                   path_to_save_plots=removed_plots_folder_path, Con_DB=con_db,
-    #                                   file_reader=file_reader, category="Removed", name_entity=name_entity_removed)
+    emotion_detection_removed.get_plot_and_emotion_rate_from_all_posts_in_category(data_cursor=data_cursor,
+                                                                           Con_DB=con_db,
+                                                                           path_to_read_data=resource_path,
+                                                                           path_to_save_plt=removed_plots_folder_path,
+                                                                           category="All",
+                                                                           subreddit_name=COLLECTION_NAME,
+                                                                           file_reader=file_reader,
+                                                                           post_or_comment_arg='post')
 
-    # print("3")
-    # get_wordcloud_of_NER_per_month_based_on_post_quantity(file_reader=file_reader,
-    #                                                       path_to_read_data=resource_path + "NER_per_month.json",
-    #                                                       category="Removed",
-    #                                                       # collection_name=os.getenv("COLLECTION_NAME"),
-    #                                                       path_to_save_plots=word_cloud_folder_path)
+    data_cursor = con_db.get_cursor_from_mongodb(db_name='reddit', collection_name=COLLECTION_NAME).find({})
 
-    # print("DONE")
+    name_entity_removed.extract_NER_from_data(posts=data_cursor, con_db=con_db,
+                                              file_name_to_save='Removed_{}_title_selftext_NER.csv'.format(COLLECTION_NAME),
+                                              path_to_folder=resource_path, save_deduced_data=True,
+                                              is_removed_bool=True, post_or_comment_arg='post')
+
+    print("2")
+    path = resource_path + 'Removed_{}_title_selftext_NER.csv'.format(COLLECTION_NAME)
+    explore_data_with_NER_and_emotion(n=50, collection_name=COLLECTION_NAME, path_to_read_data=path,
+                                      path_to_save_plots=removed_plots_folder_path, Con_DB=con_db,
+                                      post_or_comment_arg='post',
+                                      file_reader=file_reader, category="Removed", name_entity=name_entity_removed)
+
+    print("3")
+    get_wordcloud_of_NER_per_month_based_on_post_quantity(file_reader=file_reader,
+                                                          path_to_read_data=resource_path + "NER_per_month.json",
+                                                          category="Removed",
+                                                          # collection_name=os.getenv("COLLECTION_NAME"),
+                                                          path_to_save_plots=word_cloud_folder_path)
+
+    print("DONE")
     # topic_analisis_path = PATH_DRIVE + '...topic_sentim_general-best.csv'
     # connect_NER_Topic_Emotion(
     #     path_to_topic_csv=topic_analisis_path,
@@ -278,7 +279,7 @@ if __name__ == '__main__':
     #
     # explore_data_with_emotion_to_NER_per_month(category="Removed", Con_DB=con_db,
     #                                            path_to_read_data=resource_path + "NER_per_month.json",
-    #                                            path_to_save_plots=plots_folder_path,
+    #                                            path_to_save_plots=plots_folder_path,post_or_comment_arg='post',
     #                                            collection_name=os.getenv("COLLECTION_NAME"),
     #                                            file_reader=file_reader)
     #
@@ -320,12 +321,33 @@ if __name__ == '__main__':
     #                                   path_to_save_plots=all_plots_folder_path, Con_DB=con_db
     #                                   , category="All")
     #
+    # print('3')
     # explore_data_with_emotion_to_NER_per_month(category="All", Con_DB=con_db,
     #                                             path_to_read_data=resource_path + "NER_per_month.json",
     #                                             path_to_save_plots=plots_folder_path,
     #                                             collection_name=os.getenv("COLLECTION_NAME"),
     #                                             file_reader=file_reader)
     #
+
+    #
+    # # ########################## WORD CLOUD ###################################
+    #
+    #
+    # file_reader = FileReader()
+    # path = resource_path + 'RemovedNER_quantity.csv'
+    # get_wordcloud_from_csv(csv_file_name_to_read=path, category="Removed")
+    #
+    # path = resource_path + 'NotRemovedNER_quantity.csv'
+    # get_wordcloud_from_csv(csv_file_name_to_read=path, category="NotRemoved")
+    #
+    # path = resource_path + 'RemovedNER_quantity_byType.json'
+    # get_wordcloud_from_json(csv_file_name_to_read=path, category="Removed")
+    #
+    # path = resource_path + 'NotRemovedNER_quantity_byType.json'
+    # get_wordcloud_from_json(csv_file_name_to_read=path, category="NotRemoved")
+
+
+
     # # ########################## NER QUANTITY ###############################
     #
     # path = resource_path + 'Removed_{}_title_selftext_NER.csv'.format(COLLECTION_NAME)
@@ -341,7 +363,7 @@ if __name__ == '__main__':
     #                   resource_path=resource_path)
     #
     #
-    #  ####################### NER per emotion with##############################
+    #  ####################### NER per emotion with ##############################
     #
     # emotions = ["Disgust", "Anger", "Fear", "Surprise", "Sadness", "Joy"]
     # data_category_df = pd.read_csv(resource_path + "{}_NER_emotion_rate_mean_{}_50_NERS.csv".format("Removed", COLLECTION_NAME))
@@ -360,22 +382,3 @@ if __name__ == '__main__':
     #                                            not_removed_df=not_removed_df.loc[not_removed_df['entity'] == entity],
     #                                            # all_df=all_df.loc[all_df['entity'] == entity],
     #                                            emotions_list_category=emotions)
-    #
-    #
-    #
-    #
-    # # ########################## WORD CLOUD ###################################
-    #
-    #
-    # file_reader = FileReader()
-    # path = resource_path + 'RemovedNER_quantity.csv'
-    # get_wordcloud_from_csv(csv_file_name_to_read=path, category="Removed")
-    #
-    # path = resource_path + 'NotRemovedNER_quantity.csv'
-    # get_wordcloud_from_csv(csv_file_name_to_read=path, category="NotRemoved")
-    #
-    # path = resource_path + 'RemovedNER_quantity_byType.json'
-    # get_wordcloud_from_json(csv_file_name_to_read=path, category="Removed")
-    #
-    # path = resource_path + 'NotRemovedNER_quantity_byType.json'
-    # get_wordcloud_from_json(csv_file_name_to_read=path, category="NotRemoved")

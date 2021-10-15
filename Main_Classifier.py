@@ -19,3 +19,7 @@ model = Model(max_post_number=239000, path_data=corpus_json_file, post_or_commen
 
 model.split_corpus()
 
+trined_model = model.train_model(model_name="RandomForestClassifier")
+
+y_predict = trined_model.predict(model.df_test)
+
