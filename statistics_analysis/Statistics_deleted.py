@@ -93,7 +93,7 @@ class Statistic:
 
     def __init__(self):
         self.con_db = Con_DB()
-        self.objects = self.con_db.get_cursor_from_mongodb(db_name='reddit',
+        self.objects = self.con_db.get_cursor_from_mongodb(db_name='local',
                                                  collection_name=os.getenv("COLLECTION_NAME")).find({})
 
         self.post_quantity_per_month = {}
@@ -131,19 +131,19 @@ class Statistic:
             post_or_comments = self.con_db.get_text_from_post_OR_comment(object=object, post_or_comment=post_or_comment_str)
             for post_or_comment in post_or_comments:
                 date_object, date_key = self.get_date_keys(post_or_comment)
-                if post_or_comment[-1]:
-                    if date_key in dict_month.keys():
-                        dict_month[date_key] += 1
-                    else:
-                        dict_month[date_key] = 1
+                # if post_or_comment[-1]:
+                if date_key in dict_month.keys():
+                    dict_month[date_key] += 1
+                else:
+                    dict_month[date_key] = 1
 
-                    if date_object in dict_day.keys():
-                        dict_day[date_object] += 1
-                    else:
-                        dict_day[date_object] = 1
+                if date_object in dict_day.keys():
+                    dict_day[date_object] += 1
+                else:
+                    dict_day[date_object] = 1
 
-        # print("dict_month")
-        # pprint(dict_month)
+        print("dict_month")
+        pprint(dict_month)
 
         # print("dict_day")
         # pprint(dict_day)
@@ -158,7 +158,7 @@ class Statistic:
 
 
 if __name__ == '__main__':
-    s = Statistic_Deleted()
+    # s = Statistic_Deleted()
     # # print("deleted")
     # # s.deleted()
     # print("number_of_comments")

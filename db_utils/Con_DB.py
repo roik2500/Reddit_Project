@@ -69,18 +69,25 @@ class Con_DB:
     #             "link_id": comment['data']['link_id'][2:],
     #             "is_removed": self.is_removed(comment, "comment", "Removed")}
 
-    def comments_to_dicts(self, comments):
+    def comments_to_dicts(self, comments, created):
         results = []  # create list for results
+        # created = '2020-10-10'
         for comment in comments:  # iterate over comments
-            item = [[
-                comment['data']['body'], self.convert_time_format(comment['data']['created_utc'])[0],
-                comment['data']['id'], comment['data']['link_id'][2:],
-                self.is_removed(comment, "comment", "Removed")
-            ]]  # create list from comment
+            if 'created_utc' in comment['data']:
+                created = self.convert_time_format(comment['data']['created_utc'])[0]
+            id = comment['data']['id']
+            is_removed = self.is_removed(comment, "comment", "Removed")
+            text = ''
+            if "body" in comment["data"] and not comment['data']['body'].__contains__(
+                    "[removed]") and comment['data']['body'] != "[deleted]":
+                text = comment['data']['body']
+            link_id = ['link_id'][2:]
 
-            if len(comment['data']['replies']) > 0:
+            item = [[text, created, id, comment['data'], link_id, is_removed]]  # create list from comment
+
+            if 'replies' in comment["data"] and len(comment['data']['replies']) > 0:
                 replies = comment['data']['replies']['data']['children']
-                item += self.comments_to_dicts(replies)  # convert replies using the same function item["replies"] =
+                item += self.comments_to_dicts(replies, created=created)  # convert replies using the same function item["replies"] =
 
             results += item  # add converted item to results
         return results  # return all converted comments
@@ -98,13 +105,11 @@ class Con_DB:
             return [[text, created, id, is_removed]]
 
         elif post_or_comment == 'comment':
-            result = self.comments_to_dicts(object['reddit_api']['comments'])
+            result = self.comments_to_dicts(object['reddit_api']['comments'], '2020-01-01')
             # res = []
             # created = ''
             # link_id = object['post_id']
             # for obj in object['reddit_api']['comments']:
-            #     replies_num = 1
-            #     while True:
             #         Id = obj['data']['id']
             #         if 'created_utc' in obj['data']:
             #             created = self.convert_time_format(obj['data']['created_utc'])[0]
@@ -114,10 +119,6 @@ class Con_DB:
             #                 "[removed]") and obj['data']['body'] != "[deleted]":
             #             text = obj['data']['body']
             #         res.append([text, created, Id, link_id, is_removed])
-            #         replies = obj['data']['replies']['data']['children']
-            #         if len(replies) == 0:
-            #             break
-            #         replies_num = len(replies)
             return result
 
 
