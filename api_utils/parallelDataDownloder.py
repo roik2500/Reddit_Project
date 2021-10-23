@@ -48,26 +48,26 @@ async def write_to_mongo(sub, pbar_):
     logging.info("id: {}, Extract from reddit time: {}. Insert to db first time: {}. Insert to db second time: {}".format(sub["id"], elapsed_reddit_time,
                                                                                               elapsed_time_first_insert,
                                                                                               elapsed_second_insert_time))
-#
-# async def write_to_mongo(sub, pbar_):
-#     start_time = time.time()
-#     try:
-#         reddit_post = await reddit.extract_reddit_data_parallel(sub)
-#         end_time = time.time()
-#         elapsed_time_red_api = end_time - start_time
-#         end_time = time.time()
-#         con_db.insert_to_db(reddit_post)
-#         pbar_.update(1)
-#     except pymongo.errors.DuplicateKeyError:
-#         print(reddit_post["pushift_api"]["id"] + " is already exist!")
-#         return
-#     end_total_time = time.time()
-#     elapsed_mongo_time = end_total_time - end_time
-#     elapsed_total_time = end_total_time - start_time
-#     logging.info("Extract from reddit time: {}. Insert to db time: {}. Total time: {}".format(elapsed_time_red_api,
-#                                                                                               elapsed_mongo_time,
-#                                                                                               elapsed_total_time))
-#
+
+async def write_to_mongo(sub, pbar_):
+    start_time = time.time()
+    try:
+        reddit_post = await reddit.extract_reddit_data_parallel(sub)
+        end_time = time.time()
+        elapsed_time_red_api = end_time - start_time
+        end_time = time.time()
+        con_db.insert_to_db(reddit_post)
+        pbar_.update(1)
+    except pymongo.errors.DuplicateKeyError:
+        print(reddit_post["pushift_api"]["id"] + " is already exist!")
+        return
+    end_total_time = time.time()
+    elapsed_mongo_time = end_total_time - end_time
+    elapsed_total_time = end_total_time - start_time
+    logging.info("Extract from reddit time: {}. Insert to db time: {}. Total time: {}".format(elapsed_time_red_api,
+                                                                                              elapsed_mongo_time,
+                                                                                              elapsed_total_time))
+
 
 
 async def main(_submissions_list):

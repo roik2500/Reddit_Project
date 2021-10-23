@@ -1,3 +1,5 @@
+import json
+
 import pymongo
 import os
 from dotenv import load_dotenv
@@ -37,6 +39,10 @@ class Con_DB:
             int(comment_or_post)).isoformat().split(
             "T")
         return time
+
+    # def get_cursor_from_json(self, file_name):
+    #     self.posts_cursor = json.load(file_name)
+    #     return self.posts_cursor
 
     def get_cursor_from_mongodb(self, db_name="reddit", collection_name=os.getenv("COLLECTION_NAME")):
         '''

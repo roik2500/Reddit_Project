@@ -1,3 +1,4 @@
+import ijson
 import logging
 import os
 import re
@@ -27,7 +28,7 @@ load_dotenv()
 spacy.load('en_core_web_sm')
 nltk.download('wordnet', quiet=True)
 nltk.download('stopwords', quiet=True)
-# logging.getLogger().setLevel(logging.INFO)
+# logging.getLogger().setLevel(logging.CRITICAL)
 logging.basicConfig(format='%(asctime)s %(message)s')
 
 
@@ -77,7 +78,7 @@ def convert_tuples_to_dict(tup):
 
 class TopicsAnalysis:
     def __init__(self, src_name, rmovd_flag, prep_data, post_comment):
-        self.limit = 50
+        self.limit = 30
         self.start = 20
         self.step = 5
         self.removed_flag = rmovd_flag
@@ -95,7 +96,8 @@ class TopicsAnalysis:
         self.con_db = Con_DB()
         # bring data from source
         if prep_data:
-            self.data_cursor = self.con_db.get_cursor_from_mongodb(collection_name=src_name).find({})
+            # self.data_cursor = self.con_db.get_cursor_from_mongodb(collection_name=src_name).find({})
+            # self.data_cursor = self.con_db.get_cursor_from_json("wallstreetbets_2020_full_")
             self.prepare_data()
         self.corpus = 0
         self.dictionary = 0
@@ -118,20 +120,34 @@ class TopicsAnalysis:
     def prepare_data(self):
         id_lst, text_data = [], {}
         counter = 0
-        for k in range(1, 2):
-            self.con_db.set_client(k)
-            self.data_cursor = self.con_db.get_cursor_from_mongodb(collection_name=self.src_name).find({})
-            for x in tqdm(self.data_cursor):
-                # if self.removed_flag or self.con_db.is_removed(x, self.post_comment, "Removed"):
-                data_list = self.con_db.get_text_from_post_OR_comment(x, self.post_comment)
-                for d in data_list:
-                    text, date, Id, is_removed = d
-                    if self.removed_flag or is_removed:
-                        month = int(date.split('-')[1])
-                        id_lst.append((Id, month))
-                        tokens = prepare_text_for_lda(text)
-                        text_data.setdefault(month, []).append(tokens)
-                        counter += 1
+        # for k in range(1, 2):
+        with open("G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/data/wallstreetbets_2020_full_.json", 'rb') as fh:
+            with tqdm(total=500000) as pbar:
+                # line = fh.readline()
+                # self.con_db.setAUTH_DB(k)
+                # self.data_cursor = self.con_db.get_cursor_from_mongodb(collection_name=self.src_name).find({})
+                # for x in tqdm(self.data_cursor):
+                start_pos = 0
+                # parser = ijson.parse(fh)
+                items = ijson.items(fh, 'item')
+                for x in items:
+                    # if self.removed_flag or self.con_db.is_removed(x, self.post_comment, "Removed"):
+                    # try:
+                    pbar.update(1)
+                    # x = json.loads(line)
+                    if counter == 200:
+                        break
+                    data_list = self.con_db.get_text_from_post_OR_comment(x, self.post_comment)
+                    for d in data_list:
+                        text, date, Id, is_removed = d
+                        if self.removed_flag or is_removed:
+                            month = int(date.split('-')[1])
+                            id_lst.append((Id, month))
+                            tokens = prepare_text_for_lda(text)
+                            text_data.setdefault(month, []).append(tokens)
+                            counter += 1
+                    # line = fh.readline()
+
 
         pickle.dump(id_lst, open(self.dir+'/id_lst.pkl', 'wb'))
         pickle.dump(text_data, open(self.dir+'/text_data.pkl', 'wb'))
@@ -163,42 +179,50 @@ class TopicsAnalysis:
         self.perplexity_values = []
         self.coherence_values = []
         best_num_of_topics, bst_coh, best_model, second_best_num_of_topics, second_best_model, second_best_coh = 0, 0, 0, 0, 0, 0
-
+        lda_models = []
         for num_of_topic in tqdm(range(self.start, self.limit, self.step)):
             logging.info("{} topics model build: {}".format(month_name, num_of_topic))
             coherence_lda, ldamodel, perplexity_value = self.create_topics_model(num_of_topic, text_data, month_name)
             self.perplexity_values.append(perplexity_value)
             self.coherence_values.append(coherence_lda)
-            if coherence_lda > bst_coh:
-                second_best_coh = bst_coh
-                second_best_num_of_topics = best_num_of_topics
-                second_best_model = best_model
-                bst_coh = coherence_lda
-                best_num_of_topics = num_of_topic
-                best_model = ldamodel
-            elif coherence_lda >= second_best_coh:
-                second_best_num_of_topics = num_of_topic
-                second_best_model = ldamodel
-                second_best_coh = coherence_lda
-        best_directory = self.dir+"/{}/best".format(month_name)
-        pathlib.Path(best_directory).mkdir(parents=True, exist_ok=True)
+            lda_models.append((ldamodel, perplexity_value, num_of_topic))
+            # if coherence_lda > bst_coh:
+            #     second_best_coh = bst_coh
+            #     second_best_num_of_topics = best_num_of_topics
+            #     second_best_model = best_model
+            #     bst_coh = coherence_lda
+            #     best_num_of_topics = num_of_topic
+            #     best_model = ldamodel
+            # elif coherence_lda >= second_best_coh:
+            #     second_best_num_of_topics = num_of_topic
+            #     second_best_model = ldamodel
+            #     second_best_coh = coherence_lda
+        lda_models.sort(key=lambda x: x[1])
+        for k, m in enumerate(lda_models):
+            directory = self.dir+"/{}/{}".format(month_name, k)
+            pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
+            m[0].save(
+                '{}/model_{}topic_{}.gensim'.format(directory, m[2], month_name))
+
+        # best_directory = self.dir+"/{}/best".format(month_name)
+        # pathlib.Path(best_directory).mkdir(parents=True, exist_ok=True)
         # if not os.path.exists(best_directory):
         #     os.mkdir(best_directory)
-        second_directory = self.dir+"/{}/second_best".format(month_name)
-        pathlib.Path(second_directory).mkdir(parents=True, exist_ok=True)
+        # second_directory = self.dir+"/{}/second_best".format(month_name)
+        # pathlib.Path(second_directory).mkdir(parents=True, exist_ok=True)
         # if not os.path.exists(second_directory):
         #     os.mkdir(second_directory)
         self.extract_plots(month_name)
         # if type(second_best_model) == int:
         #     print(month_name, self.coherence_values)
         # else:
-        second_best_model.save(
-            '{}/model_{}topc_second_{}.gensim'.format(second_directory, second_best_num_of_topics, month_name))
+        # second_best_model.save(
+        #     '{}/model_{}topc_second_{}.gensim'.format(second_directory, second_best_num_of_topics, month_name))
         # if type(best_model) == int:
         #     print(month_name, self.coherence_values)
         # else:
-        best_model.save('{}/model_{}topc_best_{}.gensim'.format(best_directory, best_num_of_topics, month_name))
-        return best_model, second_best_model
+        # best_model.save('{}/model_{}topc_best_{}.gensim'.format(best_directory, best_num_of_topics, month_name))
+        return lda_models
 
     def create_topics_model(self, num_of_topic, text_data, month):
         # print(num_of_topic)
@@ -323,18 +347,20 @@ def run_model(key, id_lst, txt_data):
     else:
         models = topics.load_models(key)
     logging.info("{} topics model using".format(key))
-    topics.use_model(models[0], id_lst, str(key) + '-best')
-    topics.use_model(models[1], id_lst, str(key) + '-second_best')
+    for k, m in enumerate(models):
+        topics.use_model(m, id_lst, str(key) + '-' + str(k))
+    # topics.use_model(models[0], id_lst, str(key) + '-best')
+    # topics.use_model(models[1], id_lst, str(key) + '-second_best')
 # topics.id_list_month
 
 
 if __name__ == "__main__":
     regex_lda = re.compile('(model*.*gensim$)')
-    source_name, source_type = "wallstreetbets_expr", "mongo"
-    prepare_data = True  # if true load data from mongo and prapre it. else load dic and corp from disk
-    prepare_models = True  # if true create models. else load models from disk
+    source_name, source_type = "wallstreetbets", "mongo"
+    prepare_data = False  # if true load data from mongo and prapre it. else load dic and corp from disk
+    prepare_models = False  # if true create models. else load models from disk
     post_comment_flag = "post"
-    for i in range(0, 1):
+    for i in range(1, 2):
         removed_flag = i  # if True its all data, if False its only the removed
         topics = TopicsAnalysis(source_name, removed_flag, prepare_data, post_comment_flag)
         rng = list(topics.id_list_month.keys())
