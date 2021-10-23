@@ -77,9 +77,9 @@ async def main(_submissions_list):
 
 async def fix_reddit_empty_posts():
     # counter = 0
-    for character in string.ascii_lowercase[7:]:
+    for character in range(4, 8):
         print(character)
-        curs = mycol.find({'reddit_api': [], 'post_id': {'$regex': '^j{}'.format(character)}})
+        curs = mycol.find({'reddit_api': [], 'post_id': {'$regex': '^h{}'.format(character)}})
         print("here")
         pbar = tqdm(total=50000)
         await asyncio.gather(*[fix_one_post(post, pbar) for post in curs])
@@ -102,6 +102,12 @@ async def fix_one_post(post, pb):
         pb.update(1)
     except prawcore.exceptions.NotFound:
         logging.info('{} returned 404'.format(pid))
+        return
+    except prawcore.exceptions.ServerError:
+        logging.info('{} returned 500'.format(pid))
+        return
+    except prawcore.exceptions.ResponseException:
+        logging.info('{} returned 502'.format(pid))
         return
 
 

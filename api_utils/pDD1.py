@@ -77,23 +77,26 @@ async def main(_submissions_list):
 
 async def fix_reddit_empty_posts():
     counter = 0
-    for character in string.ascii_lowercase[:12]:
-        curs = mycol.find({'reddit_api': [], 'post_id': {'$regex': '^j{}'.format(character)}})
-        for post in tqdm(curs):
-            t1 = time.time()
-            pid = post['post_id']
-            push_post = post['pushift_api']
-            try:
-                red_post = await reddit.extract_reddit_data_parallel(push_post)
-                red_t = time.time() - t1
-                await con_db.update_to_db(Id=pid, reddit_post=red_post)
-                upd_t = time.time() - red_t - t1
-                logging.info(
-                    "id: {}, reddit time: {}. update time: {}".format(
-                        pid, red_t, upd_t))
-            except prawcore.exceptions.NotFound:
-                logging.info('{} returned 404'.format(pid))
-                continue
+
+    curs = mycol.find({'reddit_api': []}).sort('post_id', 1)
+    for post in tqdm(curs):
+        t1 = time.time()
+        pid = post['post_id']
+        push_post = post['pushift_api']
+        try:
+            red_post = await reddit.extract_reddit_data_parallel(push_post)
+            red_t = time.time() - t1
+            await con_db.update_to_db(Id=pid, reddit_post=red_post)
+            upd_t = time.time() - red_t - t1
+            logging.info(
+                "id: {}, reddit time: {}. update time: {}".format(
+                    pid, red_t, upd_t))
+        except prawcore.exceptions.NotFound:
+            logging.info('{} returned 404'.format(pid))
+            continue
+        except prawcore.exceptions.ServerError:
+            logging.info('{} returned 500'.format(pid))
+            continue
 
 if __name__ == '__main__':
     while True:

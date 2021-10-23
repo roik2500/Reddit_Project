@@ -1,7 +1,6 @@
 import pymongo
 import os
 from dotenv import load_dotenv
-from pprint import pprint
 import pandas as pd
 from datetime import datetime
 load_dotenv()

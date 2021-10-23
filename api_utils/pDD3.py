@@ -82,8 +82,7 @@ async def main(_submissions_list):
 
 async def fix_reddit_empty_posts():
     counter = 0
-    # for character in string.ascii_lowercase[12:]:
-    curs = mycol.find({'reddit_api': [], 'post_id': {'$regex': '^k'}})
+    curs = mycol.find({'reddit_api': []})
     for post in tqdm(curs):
         t1 = time.time()
         pid = post['post_id']
@@ -98,8 +97,15 @@ async def fix_reddit_empty_posts():
                     pid, red_t, upd_t))
         except prawcore.exceptions.NotFound:
             logging.info('{} returned 404'.format(pid))
-            return
-        pass
+            continue
+        except prawcore.exceptions.ServerError:
+            logging.info('{} returned 500'.format(pid))
+            continue
+        except prawcore.exceptions.ResponseException:
+            logging.info('{} returned 502'.format(pid))
+            continue
+
+
 
 if __name__ == '__main__':
     while True:
