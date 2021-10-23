@@ -1,8 +1,12 @@
+import json
+
 import pymongo
 import os
 from dotenv import load_dotenv
 import pandas as pd
 from datetime import datetime
+from db_utils.FileReader import FileReader
+
 load_dotenv()
 
 '''
@@ -24,6 +28,8 @@ class Con_DB:
     def __init__(self):
         self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB"))
         self.posts_cursor = None
+        self.file_reader = FileReader()
+        self.path = "/home/shouei/wallstreetbets_2020_full_.json"
 
     def setAUTH_DB(self,num):
         self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB{}".format(num)))
@@ -32,10 +38,14 @@ class Con_DB:
         return posts.find({'{}'.format(name): {"$exists": True}})
 
     def convert_time_format(self, comment_or_post):
-        time = datetime.datetime.fromtimestamp(
+        time = datetime.fromtimestamp(
             int(comment_or_post)).isoformat().split(
             "T")
         return time
+
+    # def get_cursor_from_json(self, file_name):
+    #     self.posts_cursor = json.load(file_name)
+    #     return self.posts_cursor
 
     def get_cursor_from_mongodb(self, db_name="reddit", collection_name=os.getenv("COLLECTION_NAME")):
         '''
@@ -44,9 +54,11 @@ class Con_DB:
         :argument collection_name: collection name inside your db name. TYPE- str
         :return: data from mongodb
         '''
+#         db_name = 'local'
         mydb = self.myclient[db_name]
         self.posts_cursor = mydb[collection_name]
         return self.posts_cursor
+        # return self.file_reader.get_json_iterator(self.path)
 
     '''
     :argument
@@ -56,6 +68,34 @@ class Con_DB:
     post return Array that have the title and selftext
     comment return Array that the comments separated by '..', '...' 
     '''
+    # {"body": comment['data']['body'],
+    #             "created": self.convert_time_format(comment['data']['created_utc'])[0],
+    #             "id": comment['data']['id'],
+    #             "link_id": comment['data']['link_id'][2:],
+    #             "is_removed": self.is_removed(comment, "comment", "Removed")}
+
+    def comments_to_dicts(self, comments, created):
+        results = []  # create list for results
+        # created = '2020-10-10'
+        for comment in comments:  # iterate over comments
+            if 'created_utc' in comment['data']:
+                created = self.convert_time_format(comment['data']['created_utc'])[0]
+            id = comment['data']['id']
+            is_removed = self.is_removed(comment, "comment", "Removed")
+            text = ''
+            if "body" in comment["data"] and not comment['data']['body'].__contains__(
+                    "[removed]") and comment['data']['body'] != "[deleted]":
+                text = comment['data']['body']
+            link_id = ['link_id'][2:]
+
+            item = [[text, created, id, comment['data'], link_id, is_removed]]  # create list from comment
+
+            if 'replies' in comment["data"] and len(comment['data']['replies']) > 0:
+                replies = comment['data']['replies']['data']['children']
+                item += self.comments_to_dicts(replies, created=created)  # convert replies using the same function item["replies"] =
+
+            results += item  # add converted item to results
+        return results  # return all converted comments
 
     def get_text_from_post_OR_comment(self, object, post_or_comment):
         if post_or_comment == 'post':
@@ -70,19 +110,22 @@ class Con_DB:
             return [[text, created, id, is_removed]]
 
         elif post_or_comment == 'comment':
-            res = []
-            for obj in object['reddit_api']['comments']:
-                if "body" in obj["data"] and not obj['data']['body'].__contains__(
-                        "[removed]") and obj['data']['body'] != "[deleted]":
-                    Id = obj['data']['id']
-                    created = self.convert_time_format(obj['data']['created_utc'])[0]
-                    text = obj['data']['body']
-                    is_removed = self.is_removed(obj, "comment", "Removed")
-                    res.append([text, created, Id, is_removed])
-            return res
-            # return [[obj['data']['body'], self.convert_time_format(obj['data']['created_utc'])[0], obj['data'][
-            # 'id'], self.is_removed(obj, "comment", "Removed")] for obj in object['reddit_api']['comments']]  #
-            # return array
+            result = self.comments_to_dicts(object['reddit_api']['comments'], '2020-01-01')
+            # res = []
+            # created = ''
+            # link_id = object['post_id']
+            # for obj in object['reddit_api']['comments']:
+            #         Id = obj['data']['id']
+            #         if 'created_utc' in obj['data']:
+            #             created = self.convert_time_format(obj['data']['created_utc'])[0]
+            #         is_removed = self.is_removed(obj, "comment", "Removed")
+            #         text = ''
+            #         if "body" in obj["data"] and not obj['data']['body'].__contains__(
+            #                 "[removed]") and obj['data']['body'] != "[deleted]":
+            #             text = obj['data']['body']
+            #         res.append([text, created, Id, link_id, is_removed])
+            return result
+
 
     def insert_to_db(self, reddit_post):
         self.posts_cursor.insert_one(reddit_post)
@@ -98,7 +141,7 @@ class Con_DB:
            :argument filed_name: name of the field you want to add. TYPE- str
            :argument data: TYPE- str
        '''
-        posts_cursor = con_db.get_cursor_from_mongodb(collection_name=collection_name)
+        posts_cursor = self.get_cursor_from_mongodb(collection_name=collection_name)
         for post in posts_cursor.find({}):
             posts_cursor.insert_one({"_id": post["_id"]}, {"$set": {filed_name: data}})
 
@@ -134,14 +177,16 @@ class Con_DB:
             else:
                 self.add_filed(data='reddit_api')
 
-    def get_specific_items_by_post_ids(self, ids_list):
-        cursor = self.posts_cursor.find(
-            {u'pushift_api.id': {'$in': ids_list}}
+    def get_specific_items_by_post_ids(self, ids_list, post_or_comment_arg):
+        # file_reader_new = FileReader()
+        # data_cursor = file_reader_new.get_json_iterator(self.path)
+        data_cursor = self.posts_cursor.find(
+           {u'pushift_api.id': {'$in': ids_list}}
         )
-        # return cursor
         text_and_date_list = []
-        for post in cursor:
-            text_and_date_list.append(self.get_text_from_post_OR_comment(post, post_or_comment='post'))
+        for item in data_cursor:
+            if item['pushift_api']['id'] in ids_list:
+                text_and_date_list.append(self.get_text_from_post_OR_comment(item, post_or_comment=post_or_comment_arg))
         return text_and_date_list  # [title , selftext ,created_utc, 'id']
 
     ''' return posts by category'''
@@ -167,24 +212,23 @@ class Con_DB:
         if post_comment == "post":
             if 'selftext' in post['reddit_api']['post'].keys():
                 if category == "Removed":
-                    if post['reddit_api']['post']['selftext'].__contains__("[removed]"):
+                    if post['reddit_api']['post']['selftext'].__contains__('[removed]'):
                         return True
                     return False
                 elif category == "NotRemoved":
-                    if not post['reddit_api']['post']['selftext'].__contains__("[removed]"):
+                    if not post['reddit_api']['post']['selftext'].__contains__('[removed]'):
                         return True
             return False
         elif post_comment == "comment":
             if 'body' in post["data"].keys():
-
                 if category == "Removed":
-                    if post["data"]['body'].__contains__("[removed]"):
+                    if post["data"]['body'].__contains__('[removed]'):
                         return True
                     return False
                 elif category == "NotRemoved":
-                    if not post["data"]['body'].__contains__("[removed]"):
+                    if not post["data"]['body'].__contains__('[removed]'):
                         return True
-            return False
+            return True  # was False and shai change to True because if there is no body so it was removed
 
     '''
        This function reading Data from CSV file
@@ -198,15 +242,3 @@ class Con_DB:
     # f = open(path,encoding='UTF8')
     # csv_reader = csv.reader(f)
     # return csv_reader
-
-
-if __name__ == '__main__':
-    con_db = Con_DB()
-    posts_cursor = con_db.get_cursor_from_mongodb(collection_name=os.getenv("COLLECTION_NAME"))
-    # con_db.reoder_mongo(os.getenv("COLLECTION_NAME"))
-    # con_db.add_filed(filed_name='most_updated_data', data=None)
-    # for obj in posts_cursor.find({}):
-    #     a = con_db.get_text_from_post_OR_comment(object=obj, post_or_comment='comment')
-    #     print(a)
-
-    # pprint(con_db.get_specific_items_by_post_ids(ids_list=['hjac6l', 'hjadxl', 'hjaa0v']))
