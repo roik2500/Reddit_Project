@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 import datetime
 from api_utils.PushshiftApi import PushshiftApi
-load_dotenv("../.env3")
+load_dotenv("../.env")
 #
 # # note that CLIENT_ID refers to 'personal use script' and SECRET_TOKEN to 'token'
 # auth = requests.auth.HTTPBasicAuth(os.getenv('CLIENT_ID'), os.getenv('CLIENT_SECRET'))
