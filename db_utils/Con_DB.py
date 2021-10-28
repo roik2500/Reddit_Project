@@ -27,7 +27,7 @@ removed post that have comments = 4187
 class Con_DB:
 
     def __init__(self):
-        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB1"))
+        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB"))
         self.posts_cursor = None
         self.file_reader = FileReader()
         self.path = "/home/shouei/wallstreetbets_2020_full_.json"
@@ -256,13 +256,13 @@ class Con_DB:
     # csv_reader = csv.reader(f)
     # return csv_reader
 
-    def postsBYtopic(self, path_to_csv, collection_name):
+    def postsBYtopic(self, path_to_csv, path_to_save_json, collection_name):
         topic_csv = self.read_fromCSV(path_to_csv)
         posts = self.get_cursor_from_mongodb(collection_name=collection_name)
         for topic_id in tqdm(topic_csv["Dominant_Topic"].unique()):
             dff = list(topic_csv[topic_csv["Dominant_Topic"] == topic_id]['post_id'])
             cursor = posts.find({'post_id': {'$in': dff}})
-            with open('{}.json'.format(collection_name), 'w') as file:
+            with open('{}/{}.json'.format(path_to_save_json,collection_name), 'w') as file:
                 file.write('[')
                 for document in cursor:
                     file.write(dumps(document))
