@@ -77,8 +77,8 @@ class Statistic:
         self.autolabel(rects3,ax)
 
 
-        # if path !="":
-        #     plt.savefig('{}/{} {}.png'.format(path, self.subreddit, self.type_of_post))
+        if path !="":
+            plt.savefig('{}/{} {}.png'.format(path, self.subreddit, self.type_of_post))
 
         return plt.show()
     '''

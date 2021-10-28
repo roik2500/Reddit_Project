@@ -2,6 +2,7 @@ import json
 
 import pymongo
 import os
+from datasets import tqdm, dumps
 from dotenv import load_dotenv
 import pandas as pd
 from datetime import datetime
@@ -26,12 +27,12 @@ removed post that have comments = 4187
 class Con_DB:
 
     def __init__(self):
-        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB"))
+        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB1"))
         self.posts_cursor = None
         self.file_reader = FileReader()
         self.path = "/home/shouei/wallstreetbets_2020_full_.json"
 
-    def setAUTH_DB(self,num):
+    def setAUTH_DB(self, num):
         self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB{}".format(num)))
 
     def get_posts_text(self, posts, name):
@@ -54,11 +55,21 @@ class Con_DB:
         :argument collection_name: collection name inside your db name. TYPE- str
         :return: data from mongodb
         '''
-#         db_name = 'local'
+        #         db_name = 'local'
         mydb = self.myclient[db_name]
         self.posts_cursor = mydb[collection_name]
         return self.posts_cursor
         # return self.file_reader.get_json_iterator(self.path)
+
+    def searchConnectionByPostId(self, post_id):
+        for i in range(1, 5):
+            temp_id = self.setAUTH_DB(i)
+            p = self.get_cursor_from_mongodb()
+            post = p.find({"post_id": post_id})
+            if post.count() == 0:
+                continue
+            else:
+                return p
 
     '''
     :argument
@@ -68,6 +79,7 @@ class Con_DB:
     post return Array that have the title and selftext
     comment return Array that the comments separated by '..', '...' 
     '''
+
     # {"body": comment['data']['body'],
     #             "created": self.convert_time_format(comment['data']['created_utc'])[0],
     #             "id": comment['data']['id'],
@@ -92,7 +104,8 @@ class Con_DB:
 
             if 'replies' in comment["data"] and len(comment['data']['replies']) > 0:
                 replies = comment['data']['replies']['data']['children']
-                item += self.comments_to_dicts(replies, created=created)  # convert replies using the same function item["replies"] =
+                item += self.comments_to_dicts(replies,
+                                               created=created)  # convert replies using the same function item["replies"] =
 
             results += item  # add converted item to results
         return results  # return all converted comments
@@ -125,7 +138,6 @@ class Con_DB:
             #             text = obj['data']['body']
             #         res.append([text, created, Id, link_id, is_removed])
             return result
-
 
     def insert_to_db(self, reddit_post):
         self.posts_cursor.insert_one(reddit_post)
@@ -181,7 +193,7 @@ class Con_DB:
         # file_reader_new = FileReader()
         # data_cursor = file_reader_new.get_json_iterator(self.path)
         data_cursor = self.posts_cursor.find(
-           {u'pushift_api.id': {'$in': ids_list}}
+            {u'pushift_api.id': {'$in': ids_list}}
         )
         text_and_date_list = []
         for item in data_cursor:
@@ -234,11 +246,25 @@ class Con_DB:
        This function reading Data from CSV file
        :argument path - path to csv file in this computer
        :return rows from csv
-       '''
+    '''
 
     def read_fromCSV(self, path):
         df = pd.read_csv(path)
         return df
+
     # f = open(path,encoding='UTF8')
     # csv_reader = csv.reader(f)
     # return csv_reader
+
+    def postsBYtopic(self, path_to_csv, collection_name):
+        topic_csv = self.read_fromCSV(path_to_csv)
+        posts = self.get_cursor_from_mongodb(collection_name=collection_name)
+        for topic_id in tqdm(topic_csv["Dominant_Topic"].unique()):
+            dff = list(topic_csv[topic_csv["Dominant_Topic"] == topic_id]['post_id'])
+            cursor = posts.find({'post_id': {'$in': dff}})
+            with open('{}.json'.format(collection_name), 'w') as file:
+                file.write('[')
+                for document in cursor:
+                    file.write(dumps(document))
+                    file.write(',')
+                file.write(']')
