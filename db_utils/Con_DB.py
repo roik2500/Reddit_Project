@@ -27,7 +27,7 @@ removed post that have comments = 4187
 class Con_DB:
 
     def __init__(self):
-        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB1"))
+        self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB"))
         self.posts_cursor = None
         self.file_reader = FileReader()
         self.path = "/home/shouei/wallstreetbets_2020_full_.json"
