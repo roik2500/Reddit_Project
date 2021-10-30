@@ -1,8 +1,8 @@
 import json
-
 import pymongo
 import os
-from datasets import tqdm, dumps
+from datasets import tqdm
+from bson.json_util import dumps
 from dotenv import load_dotenv
 import pandas as pd
 from datetime import datetime
@@ -249,22 +249,19 @@ class Con_DB:
     '''
 
     def read_fromCSV(self, path):
-        df = pd.read_csv(path)
+        df = pd.read_csv(path, encoding='UTF8')
         return df
 
     # f = open(path,encoding='UTF8')
     # csv_reader = csv.reader(f)
     # return csv_reader
 
-    def postsBYtopic(self, path_to_csv, path_to_save_json, collection_name):
+    def fromCSVtoJSON(self, path_to_csv, path_to_save_json, collection_name):
         topic_csv = self.read_fromCSV(path_to_csv)
         posts = self.get_cursor_from_mongodb(collection_name=collection_name)
-        for topic_id in tqdm(topic_csv["Dominant_Topic"].unique()):
-            dff = list(topic_csv[topic_csv["Dominant_Topic"] == topic_id]['post_id'])
-            cursor = posts.find({'post_id': {'$in': dff}})
-            with open('{}/{}.json'.format(path_to_save_json,collection_name), 'w') as file:
-                file.write('[')
-                for document in cursor:
-                    file.write(dumps(document))
-                    file.write(',')
-                file.write(']')
+        dff = list(topic_csv["post_id"].unique())
+        with open('{}/{}.json'.format(path_to_save_json, collection_name), 'w') as file:
+            cursor = posts.find({'post_id': {'$in': dff}}).max_time_ms(1000000)
+            json.dump(dumps(cursor), file)
+
+
