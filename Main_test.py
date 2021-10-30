@@ -334,9 +334,7 @@ def CreateCommentDict_And_Sentiment(json_file="", post_id=""):
 '''
 Helper recursion function that creating a dict that contains the whole comments 
 '''
-
-
-def comments_to_dicts(comments):
+def comments_to_dicts(comments,dict_or_list):
     results = []  # create list for results
     for comment in comments:  # iterate over comments
         p = comment['data']
@@ -362,12 +360,15 @@ def comments_to_dicts(comments):
 
         }  # create dict from comment
 
-        # check if there is a sub_comments
-        if len(comment['data']['replies']) > 0:
+        # check if there is a sub_comments and also check the method of the recursion (dict by hierarchy or list)
+        if len(comment['data']['replies']) > 0 and dict_or_list == 'dict':
             item["replies"] = comments_to_dicts(
-                comment['data']['replies']['data']['children'])  # convert replies using the same function
+                comment['data']['replies']['data']['children'], 'dict')  # convert replies using the same function
+        elif len(comment['data']['replies']) > 0 and dict_or_list == 'list':
+            comments_to_dicts(comment['data']['replies']['data']['children'], 'list')
 
         results.append(item)  # add converted item to results
+
     return results  # return all converted comments
 
 
@@ -470,8 +471,12 @@ if __name__ == '__main__':
 # json_file = '/home/roikreme/wallstreetbets_expr_shimon.json'
 # update_sentiment_statistic_pysentimiento_path(json_file)
 
-collection_name = 'wallstreetbets_2020_full'
-con.postsBYtopic(path_csv,collection_name)
+collection_name = 'wallstreetbets'
+#path_to_save = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Outputs from cpu/wallstreetbets/post/all/general/4'
+path_to_save = '/home/roikreme'
+#path_csv = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Outputs from cpu/wallstreetbets/post/all/general/4/document_topic_table_general-4_updated.csv'
+path_csv = '/home/roikreme/document_topic_table_general-4_updated.csv'
+con.fromCSVtoJSON(path_csv, path_to_save, collection_name=collection_name)
 
 # type_of_post = "All"
 # path = creat_new_folder_drive(type_of_post, pysentimiento_path + '/')
