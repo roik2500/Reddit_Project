@@ -160,7 +160,7 @@ class Sentiment:
     :argument fullpath (optionally) - if we want to save an img of the graph this is the full path to drive.
     '''
 
-    def draw_sentiment_time(self, LayberyName, name="", topic="", fullpath=""):
+    def draw_sentiment_time(self, LayberyName="", name="", topic="", fullpath=""):
         # calculate the % of positive, negative and neutral
         self.percent_positive = (self.positive / self.total_posts) * 100
         self.percent_negative = (self.negative / self.total_posts) * 100
@@ -193,11 +193,9 @@ class Sentiment:
 
     def draw_sentiment_plot(self, Yaxis, Xaxis, name, topic="", fullpath="", LayberyName=""):
         # position of text plot
-        # x = max(Xaxis) + 0.5
-        # y = max(Yaxis) / 2
+        x = max(Xaxis) + 0.5
+        y = max(Yaxis) / 2
 
-        x = max(Xaxis)
-        y = max(Yaxis)
 
         fig = plt.figure(figsize=(15, 5))
         ax = fig.add_subplot(111)

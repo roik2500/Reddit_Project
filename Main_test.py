@@ -293,41 +293,44 @@ def update_sentiment_statistic_pysentimiento_path(json_file):
     statistic_notremoved.get_percent()
 
 
-def CreateCommentDict_And_Sentiment(json_file="", post_id=""):
-    collection_name = "wallstreetbets"
+def CreateCommentDict_And_Sentiment(json_file,path_to_save,collection_name):
     type = "All"
-    # path_save = "/storage/users/dt-reddit/wallstreetbets/sentiment_analysis/comment"
-    path_save = "G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Sentiment Anylasis/pysentimiento/wallstreetbets 2020/comment"
+
     comments_post = {}
     fj = open(json_file, 'rb')
     items = ijson.items(fj, 'item')
-    dataforcsv = []
-    # if post_id:
-    #     for o in items:
-    #         if o['post_id'] == post_id:
-    #             items = [o]
-    #             break
 
     for post in tqdm(items):
-        comment_sentiment = Sentiment(collection_name, type)
         comments = post['reddit_api']['comments']
-        comment_dict = comments_to_dicts(comments)
-        comments_post[post[
-            'post_id']] = comment_dict  ## {'postid1:[{ "id": id1,"created":created1,"text": text1,"link_id": link_id1,"is_removed":is_removed1,"replies":[]},..]
+
+        # if there is no comments for this post - continue
+        if not comments:
+            continue
+
+        #All
+        comment_sentiment_day = Sentiment(collection_name, "All")
+        comment_sentiment_month = Sentiment(collection_name, "All")
+
+
+        # collecting the all comments and sub comments of this post - list of comments
+        comment_dict = comments_to_dicts(comments,"list")
+
+        #a dict of all comments per post_id
+        comments_post[post['post_id']] = comment_dict  ## {'postid1:[{ "id": id1,"created":created1,"text": text1,"link_id": link_id1,"is_removed":is_removed1,"replies":[]},..]
 
         # After the collection of all comments of specific post, we are doing a sentiment analysis of this
         # post's comments ans also drawing a graph
         if comments_post[post['post_id']]:
             for item in comment_dict:  # item = {"id": eidu9,"created":'2021-01-01',"text": 'a b c d..","link_id": link_id,"is_removed": True}
-                comment_sentiment.update_sentiment(item, "year", "comment")
+                comment_sentiment_day.update_sentiment(item, "year", "comment")
+                comment_sentiment_month.update_sentiment(item, "month", "comment")
+
                 # saving the drawing - the name of each document is the created_utc of the posts
-                # path = creat_new_folder_drive(item['created'], path_save + '/')
-                # path = creat_new_folder_drive("post_id - "+post['post_id'], path + '/')
-            dataforcsv.append([post['post_id'], post['pushift_api']['selftext'], comment_sentiment.percent_positive,
-                               comment_sentiment.percent_negative, comment_sentiment.neutral,
-                               comment_sentiment.positive, comment_sentiment.negative, comment_sentiment.neutral,
-                               comment_sentiment.text_per_month])
-        return dataforcsv
+                path = creat_new_folder_drive(item['created'], path_to_save + '/')
+
+            comment_sentiment_day.draw_sentiment_time(name="All comments per day",fullpath=path)
+            comment_sentiment_month.draw_sentiment_time(name="All comments per month",fullpath=path)
+
 
 
 
@@ -459,7 +462,7 @@ if __name__ == '__main__':
         df = pd.DataFrame(columns=header)
 
         for post_id in tqdm(dff):
-            data = CreateCommentDict_And_Sentiment(json_file=json_file, post_id=post_id)
+            data = CreateCommentDict_And_Sentiment(json_file=json_file,post_id=post_id)
 
             ## create CSV file
             if data:
@@ -467,13 +470,14 @@ if __name__ == '__main__':
 
         df.to_csv(r'{}/statisticsComment.csv'.format(path_save),encoding='UTF-8')
 
-# #createCSVstatisticComments(21)
 
-# for checking the json file
-fj = open('G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Outputs from cpu/wallstreetbets/post/all/general/4/wallstreetbets.json', 'rb')
-items = ijson.items(fj, 'item')
-for item in items:
-    p = item
+#json_file = "G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Outputs from cpu/wallstreetbets/post/all/general/4/wallstreetbets.json"
+json_file = "/storage/users/dt-reddit/wallstreetbets/sentiment_analysis/comment/4/wallstreetbets_4.json"
+collection_name = "wallstreetbets"
+path_save = "/storage/users/dt-reddit/wallstreetbets/sentiment_analysis/comment/4"
+#path_save = "G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Sentiment Anylasis/pysentimiento/wallstreetbets 2020/comment"
+CreateCommentDict_And_Sentiment(json_file,path_save,collection_name)
+
 
 
 collection_name = 'wallstreetbets'
