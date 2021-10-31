@@ -468,14 +468,17 @@ if __name__ == '__main__':
         df.to_csv(r'{}/statisticsComment.csv'.format(path_save),encoding='UTF-8')
 
 # #createCSVstatisticComments(21)
-# json_file = '/home/roikreme/wallstreetbets_expr_shimon.json'
-# update_sentiment_statistic_pysentimiento_path(json_file)
+
+# for checking the json file
+fj = open('G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Outputs from cpu/wallstreetbets/post/all/general/4/wallstreetbets.json', 'rb')
+items = ijson.items(fj, 'item')
+for item in items:
+    p = item
+
 
 collection_name = 'wallstreetbets'
-#path_to_save = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Outputs from cpu/wallstreetbets/post/all/general/4'
-path_to_save = '/home/roikreme'
-#path_csv = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Outputs from cpu/wallstreetbets/post/all/general/4/document_topic_table_general-4_updated.csv'
-path_csv = '/home/roikreme/document_topic_table_general-4_updated.csv'
+path_csv = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Outputs from cpu/wallstreetbets/post/all/general/4/document_topic_table_general-4_updated.csv'
+path_to_save = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Outputs from cpu/wallstreetbets/post/all/general/4'
 con.fromCSVtoJSON(path_csv, path_to_save, collection_name=collection_name)
 
 # type_of_post = "All"
