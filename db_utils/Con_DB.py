@@ -252,16 +252,24 @@ class Con_DB:
         df = pd.read_csv(path, encoding='UTF8')
         return df
 
-    # f = open(path,encoding='UTF8')
-    # csv_reader = csv.reader(f)
-    # return csv_reader
 
+
+    '''
+    This function making a json file from topic's csv file.
+    the function filtering the large collection in MongoDB of full posts wsb 2020 and export the collection after filtering to JSON file
+    :argument path_to_csv - full path to csv file of specific topic
+    :argument path_to_save_json - full path of directory of saving the json file 
+    :argument collection_name - the name of collection(must be exactly the same name that wrote in MongoDB)
+    '''
     def fromCSVtoJSON(self, path_to_csv, path_to_save_json, collection_name):
         topic_csv = self.read_fromCSV(path_to_csv)
         posts = self.get_cursor_from_mongodb(collection_name=collection_name)
         dff = list(topic_csv["post_id"].unique())
         with open('{}/{}.json'.format(path_to_save_json, collection_name), 'w') as file:
             cursor = posts.find({'post_id': {'$in': dff}}).max_time_ms(1000000)
-            json.dump(dumps(cursor), file)
-
+            file.write('[')
+            for document in cursor:
+                file.write(dumps(document))
+                file.write(',')
+            file.write(']')
 
