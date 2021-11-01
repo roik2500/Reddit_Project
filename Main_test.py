@@ -537,7 +537,7 @@ CreateCommentDict_And_Sentiment(json_file,path_save,collection_name)
 # collection_name = 'wallstreetbets'
 # path_csv = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Outputs from cpu/wallstreetbets/post/all/general/4/document_topic_table_general-4_updated.csv'
 # path_to_save = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Outputs from cpu/wallstreetbets/post/all/general/4'
- con.fromCSVtoJSON(path_csv, path_to_save, collection_name=collection_name)
+#con.fromCSVtoJSON(path_csv, path_to_save, collection_name=collection_name)
 
 # json_file = "/storage/users/dt-reddit/wallstreetbets_2020_full_.json"
 # update_sentiment_statistic_pysentimiento_path()
