@@ -132,8 +132,10 @@ class Sentiment:
 
         if Month_Or_Year == "month":
             x_value = int(datetime.datetime.strptime(created, "%Y-%m-%d").date().month)
+
         elif Month_Or_Year == "date":
             x_value = str(datetime.datetime.strptime(created, "%Y-%m-%d").date())
+
         else:
             x_value = int(datetime.datetime.strptime(created, "%Y-%m-%d").date().day)
 
@@ -249,6 +251,6 @@ class Sentiment:
                 p = fullpath + '/' + self.subreddit + self.type_of_post+'.png'
                 plt.savefig('{}/{} {}.png'.format(fullpath,self.subreddit,self.type_of_post))
             else:
-                ax.savefig('{}/{} ({}).png'.format(fullpath,self.subreddit, name))
+                plt.savefig('{}/{} ({}).png'.format(fullpath,self.subreddit, name))
 
         return plt.show()

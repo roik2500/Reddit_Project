@@ -240,58 +240,103 @@ def creat_Sentiment_Graph_For_Topics(path, collection_name, type_of_post):
         # topic_set.draw_sentiment_time("subjectivity", "wallstreetbets", "All")
 
 
-def update_sentiment_statistic_pysentimiento_path(json_file):
+def update_sentiment_statistic_pysentimiento_path(json_file=""):
     collection_name = "wallstreetbets"
-    # json_file = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/data/wallstreetbets_2020_full_.json'
-   # path_save_sentiment = "/storage/users/dt-reddit/wallstreetbets/sentiment_analysis/post/sentiment/"
-    #path_save_statistic = "/storage/users/dt-reddit/wallstreetbets/sentiment_analysis/post/statistic/"
-    path_save_sentiment = "/home/roikreme/"
-    path_save_statistic = "/home/roikreme/"
+    #json_file = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/data/wallstreetbets_2020_full_.json'
+    path_save_sentiment = "/storage/users/dt-reddit/wallstreetbets/sentiment_analysis/post/sentiment/"
+    path_save_statistic = "/storage/users/dt-reddit/wallstreetbets/sentiment_analysis/post/statistic/"
 
     fj = open(json_file, 'rb')
     items = ijson.items(fj, 'item')
 
     # All
-    sentiment_all = Sentiment(collection_name, "All")
-    statistic_all = Statistic(collection_name, "All")
+    sentiment_all_month = Sentiment(collection_name, "All")
+    sentiment_all_day = Sentiment(collection_name, "All")
+    statistic_all_month = Statistic(collection_name, "All")
+    statistic_all_day = Statistic(collection_name, "All")
+
     # Removed
-    sentiment_removed = Sentiment(collection_name, "Removed")
-    statistic_removed = Statistic(collection_name, "Removed")
+    sentiment_removed_month = Sentiment(collection_name, "Removed")
+    sentiment_removed_day = Sentiment(collection_name, "Removed")
+    statistic_removed_month = Statistic(collection_name, "Removed")
+    statistic_removed_day = Statistic(collection_name, "Removed")
+
     # NotRemoved
-    sentiment_notremoved = Sentiment(collection_name, "NotRemoved")
-    statistic_notremoved = Statistic(collection_name, "NotRemoved")
+    sentiment_notremoved_month = Sentiment(collection_name, "NotRemoved")
+    sentiment_notremoved_day = Sentiment(collection_name, "NotRemoved")
+    statistic_notremoved_month = Statistic(collection_name, "NotRemoved")
+    statistic_notremoved_day = Statistic(collection_name, "NotRemoved")
 
-
+    auto = 0
     for post in tqdm(items):
+        if ('removed_by_category' in post['reddit_api']['post'].keys()) and post['reddit_api']['post']['removed_by_category'] == 'automod_filtered':
+            auto += 1
+            continue
 
-        # All
-        sentiment_all.update_sentiment(post, "date", "post")
-        statistic_all.precentage_media(con, post)
+        # All - month
+        sentiment_all_month.update_sentiment(post, "month", "post")
+        statistic_all_month.precentage_media(con, post)
 
-        # Removed
-        sentiment_removed.update_sentiment(post, "date", "post")
-        statistic_removed.precentage_media(con, post)
+        # All - day
+        sentiment_all_day.update_sentiment(post, "year", "post")
+        statistic_all_day.precentage_media(con, post)
 
-        # NotRemoved
-        sentiment_notremoved.update_sentiment(post, "date", "post")
-        statistic_notremoved.precentage_media(con, post)
+        # Removed - month
+        sentiment_removed_month.update_sentiment(post, "month", "post")
+        statistic_removed_month.precentage_media(con, post)
+
+        # Removed - day
+        sentiment_removed_day.update_sentiment(post, "year", "post")
+        statistic_removed_day.precentage_media(con, post)
+
+        # NotRemoved - month
+        sentiment_notremoved_month.update_sentiment(post, "month", "post")
+        statistic_notremoved_month.precentage_media(con, post)
+
+        # NotRemoved - day
+        sentiment_notremoved_day.update_sentiment(post, "year", "post")
+        statistic_notremoved_day.precentage_media(con, post)
 
 
-    # All
-    sentiment_all.draw_sentiment_time('pysentimiento', fullpath=path_save_sentiment)
-    statistic_all.draw_statistic_bars(sentiment_all, path_save_statistic)
-    statistic_all.get_percent()
+    path_save_sentiment_all= creat_new_folder_drive("All",path_save_sentiment+'/')
+    path_save_statistic_all = creat_new_folder_drive("All",path_save_statistic+'/')
 
-    # Removed
-    sentiment_removed.draw_sentiment_time('pysentimiento', fullpath=path_save_sentiment)
-    statistic_removed.draw_statistic_bars(sentiment_removed, path_save_statistic)
-    statistic_removed.get_percent()
+    # All - month
+    sentiment_all_month.draw_sentiment_time('pysentimiento',name="per day", fullpath=path_save_sentiment_all)
+    statistic_all_month.draw_statistic_bars(sentiment_all_month, path_save_statistic_all,name="per day")
+    statistic_all_month.get_percent()
 
-    # NotRemoved
-    sentiment_notremoved.draw_sentiment_time('pysentimiento', fullpath=path_save_sentiment)
-    statistic_notremoved.draw_statistic_bars(sentiment_notremoved, path_save_statistic)
-    statistic_notremoved.get_percent()
+    # All - day
+    sentiment_all_day.draw_sentiment_time('pysentimiento',name='per month', fullpath=path_save_sentiment_all)
+    statistic_all_day.draw_statistic_bars(sentiment_all_day, path_save_statistic_all,name='per month')
+    statistic_all_day.get_percent()
 
+    path_save_sentiment_Removed  = creat_new_folder_drive("Removed", path_save_sentiment + '/')
+    path_save_statistic_Removed  = creat_new_folder_drive("Removed", path_save_statistic + '/')
+
+    # Removed - month
+    sentiment_removed_month.draw_sentiment_time('pysentimiento',name='per month', fullpath=path_save_sentiment_Removed)
+    statistic_removed_month.draw_statistic_bars(sentiment_removed_month, path_save_statistic_Removed,name='per month')
+    statistic_removed_month.get_percent()
+
+    # Removed - day
+    sentiment_removed_day.draw_sentiment_time('pysentimiento',name='per day' ,fullpath=path_save_sentiment_Removed)
+    statistic_removed_day.draw_statistic_bars(sentiment_removed_day,path_save_statistic_Removed,name='per day')
+    statistic_removed_day.get_percent()
+
+    path_save_sentiment_NotRemoved = creat_new_folder_drive("NotRemoved", path_save_sentiment + '/')
+    path_save_statistic_NotRemoved = creat_new_folder_drive("NotRemoved", path_save_statistic + '/')
+
+    # NotRemoved - month
+    sentiment_notremoved_month.draw_sentiment_time('pysentimiento',name='per month', fullpath=path_save_sentiment_NotRemoved)
+    statistic_notremoved_month.draw_statistic_bars(sentiment_notremoved_month, path_save_statistic_NotRemoved,name = 'per month')
+    statistic_notremoved_month.get_percent()
+
+    # NotRemoved - day
+    sentiment_notremoved_day.draw_sentiment_time('pysentimiento',name='per day', fullpath=path_save_sentiment_NotRemoved)
+    statistic_notremoved_day.draw_statistic_bars(sentiment_notremoved_month, path_save_statistic_NotRemoved,name = 'per day')
+    statistic_notremoved_day.get_percent()
+    print(auto)
 
 def CreateCommentDict_And_Sentiment(json_file,path_to_save,collection_name):
     type = "All"
@@ -299,8 +344,11 @@ def CreateCommentDict_And_Sentiment(json_file,path_to_save,collection_name):
     comments_post = {}
     fj = open(json_file, 'rb')
     items = ijson.items(fj, 'item')
-
+    a=0
     for post in tqdm(items):
+        if a !=23:
+            a+=1
+            continue
         comments = post['reddit_api']['comments']
 
         # if there is no comments for this post - continue
@@ -343,6 +391,8 @@ def comments_to_dicts(comments,dict_or_list):
         p = comment['data']
         if 'created_utc' in comment['data']:
             created = con.convert_time_format(comment['data']['created_utc'])[0]
+        else:
+            created = None
 
         id = comment['data']['id']
         is_removed = con.is_removed(comment, "comment", "Removed")
@@ -352,7 +402,10 @@ def comments_to_dicts(comments,dict_or_list):
             'body'] != "[deleted]":
             text = comment['data']['body']
 
-        link_id = comment["data"]['link_id'][3:]
+        if 'linkid' in comment["data"]:
+            link_id = comment["data"]['link_id'][3:]
+        else:
+            link_id = None
 
         item = {
             "id": id,
@@ -472,23 +525,29 @@ if __name__ == '__main__':
 
 
 #json_file = "G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Outputs from cpu/wallstreetbets/post/all/general/4/wallstreetbets.json"
-json_file = "/storage/users/dt-reddit/wallstreetbets/sentiment_analysis/comment/4/wallstreetbets_4.json"
+#json_file = "/storage/users/dt-reddit/wallstreetbets/sentiment_analysis/comment/4/wallstreetbets_4.json"
 collection_name = "wallstreetbets"
-path_save = "/storage/users/dt-reddit/wallstreetbets/sentiment_analysis/comment/4"
-#path_save = "G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Sentiment Anylasis/pysentimiento/wallstreetbets 2020/comment"
+#path_save = "/storage/users/dt-reddit/wallstreetbets/sentiment_analysis/comment/4"
+path_save = "G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Sentiment Anylasis/pysentimiento/wallstreetbets 2020/comment"
+json_file = "G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/data/wallstreetbets_2020_full_.json"
 CreateCommentDict_And_Sentiment(json_file,path_save,collection_name)
 
 
 
-collection_name = 'wallstreetbets'
-path_csv = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Outputs from cpu/wallstreetbets/post/all/general/4/document_topic_table_general-4_updated.csv'
-path_to_save = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Outputs from cpu/wallstreetbets/post/all/general/4'
-con.fromCSVtoJSON(path_csv, path_to_save, collection_name=collection_name)
+# collection_name = 'wallstreetbets'
+# path_csv = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Outputs from cpu/wallstreetbets/post/all/general/4/document_topic_table_general-4_updated.csv'
+# path_to_save = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/Outputs from cpu/wallstreetbets/post/all/general/4'
+ con.fromCSVtoJSON(path_csv, path_to_save, collection_name=collection_name)
+
+# json_file = "/storage/users/dt-reddit/wallstreetbets_2020_full_.json"
+# update_sentiment_statistic_pysentimiento_path()
+
+
+
 
 # type_of_post = "All"
 # path = creat_new_folder_drive(type_of_post, pysentimiento_path + '/')
 # creat_Sentiment_Graph_For_Topics(pysentimiento_path, subreddit, "All")
-# update_sentiment_statistic_pysentimiento_path(pysentimiento_path, subreddit, "All")
 # add_csv('C:/document_topic_table_general-best.csv')
 # list_of_words = ["Robinhood","Robinhood".lower(),"Robinhood".upper(), "e-trade","e-trade".lower(),"e-trade".upper(), "options","options".lower(),"options".upper(),
 # "Trading","Trading".lower(),"Trading".upper(), "E-Trade","E-Trade".lower(),"E-Trade".upper()]
