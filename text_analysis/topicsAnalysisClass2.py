@@ -18,7 +18,7 @@ import pickle
 import pyLDAvis
 from textblob import TextBlob
 from tqdm import tqdm
-from Con_DB import Con_DB
+from db_utils.Con_DB import Con_DB
 from dotenv import load_dotenv
 import pathlib
 
