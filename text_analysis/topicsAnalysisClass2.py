@@ -23,7 +23,7 @@ from dotenv import load_dotenv
 import pathlib
 
 load_dotenv()
-
+regex_lda = re.compile('(model*.*gensim$)')
 spacy.load('en_core_web_sm')
 nltk.download('wordnet', quiet=True)
 nltk.download('stopwords', quiet=True)
@@ -75,6 +75,19 @@ def convert_tuples_to_dict(tup):
     return dic
 
 
+def dump_prepared_data_files(directory, text_data):
+    pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
+    # if not os.path.exists(directory):
+    #     os.mkdir(directory)
+    dic = corpora.Dictionary(text_data)
+    dic.save('{}/dictionary.gensim'.format(directory))
+    corpus = [dic.doc2bow(text) for text in text_data]
+    tfidf = TfidfModel(corpus)
+    corpus_tfidf = tfidf[corpus]
+    pickle.dump(corpus, open('{}/corpus.pkl'.format(directory), 'wb'))
+    pickle.dump(corpus_tfidf, open('{}/corpus_tfidf.pkl'.format(directory), 'wb'))
+
+
 class TopicsAnalysis:
     def __init__(self, src_name, rmovd_flag, prep_data, post_comment):
         self.limit = 50
@@ -118,23 +131,16 @@ class TopicsAnalysis:
         return file
 
     def prepare_data(self):
-        id_lst, text_data = [], {}
+        id_lst, text_data_dict, curr_text_data = [], {}, []
         counter = 0
         # for k in range(1, 2):
         with open("wallstreetbets_2020_full_.json", 'rb') as fh:
             with tqdm(total=500000) as pbar:
-                # line = fh.readline()
                 # self.con_db.setAUTH_DB(k)
                 # self.data_cursor = self.con_db.get_cursor_from_mongodb(collection_name=self.src_name).find({})
-                # for x in tqdm(self.data_cursor):
-                start_pos = 0
-                # parser = ijson.parse(fh)
                 items = ijson.items(fh, 'item')
                 for x in items:
-                    # if self.removed_flag or self.con_db.is_removed(x, self.post_comment, "Removed"):
-                    # try:
                     pbar.update(1)
-                    # x = json.loads(line)
                     data_list = self.con_db.get_text_from_post_OR_comment(x, self.post_comment)
                     for d in data_list:
                         text, date, Id, is_removed = d
@@ -142,35 +148,17 @@ class TopicsAnalysis:
                             month = int(date.split('-')[1])
                             id_lst.append((Id, month))
                             tokens = prepare_text_for_lda(text)
-                            text_data.setdefault(month, []).append(tokens)
+                            text_data_dict.setdefault(month, []).append(tokens)
                             counter += 1
-                    # line = fh.readline()
-
         pickle.dump(id_lst, open(self.dir + '/id_lst.pkl', 'wb'))
-        pickle.dump(text_data, open(self.dir + '/text_data.pkl', 'wb'))
-        for k in text_data:
+        pickle.dump(text_data_dict, open(self.dir + '/text_data.pkl', 'wb'))
+        for k in text_data_dict:
             directory = self.dir + "/{}".format(k)
-            pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
-            # if not os.path.exists(directory):
-            #     os.mkdir(directory)
-            dic = corpora.Dictionary(text_data[k])
-            dic.save('{}/dictionary.gensim'.format(directory))
-            corpus = [dic.doc2bow(text) for text in text_data[k]]
-            tfidf = TfidfModel(corpus)
-            corpus_tfidf = tfidf[corpus]
-            pickle.dump(corpus, open('{}/corpus.pkl'.format(directory), 'wb'))
-            pickle.dump(corpus_tfidf, open('{}/corpus_tfidf.pkl'.format(directory), 'wb'))
+            curr_text_data = text_data_dict[k]
+            dump_prepared_data_files(directory, k, curr_text_data)
         directory = self.dir + "/general"
-        pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
-        # if not os.path.exists(directory):
-        #     os.mkdir(directory)
-        dic = corpora.Dictionary(list(text_data.values())[0])
-        corpus = [dic.doc2bow(text) for txt_data in list(text_data.values()) for text in txt_data]
-        tfidf = TfidfModel(corpus)
-        corpus_tfidf = tfidf[corpus]
-        pickle.dump(corpus, open(directory + '/corpus.pkl', 'wb'))
-        pickle.dump(corpus_tfidf, open('{}/corpus_tfidf.pkl'.format(directory), 'wb'))
-        dic.save(directory + '/dictionary.gensim')
+        curr_text_data = [txt for txt_data in list(text_data_dict) for txt in txt_data]
+        dump_prepared_data_files(directory, curr_text_data)
 
     def topics_exp(self, text_data, month_name):
         self.perplexity_values = []
@@ -338,63 +326,22 @@ class TopicsAnalysis:
                     modls.append(LdaModel.load('{}/{}'.format(root, file)))
         return modls
 
+    def use_model(self, key, id_lst, models):
+        logging.info("{} topics model using".format(key))
+        for k, m in enumerate(models):
+            self.use_model(m, id_lst, str(key) + '-' + str(k))
 
-def use_model(key, id_lst, models):
-    logging.info("{} topics model using".format(key))
-    for k, m in enumerate(models):
-        topics.use_model(m, id_lst, str(key) + '-' + str(k))
-
-
-def run_model(key, id_lst, txt_data):
-    topics.load_dic_cor(str(key))
-    if prepare_models:
-        models = topics.topics_exp(txt_data, key)
-    else:
-        models = topics.load_models(key)
-    # logging.info("{} topics model using".format(key))
-    return models
-    # for k, m in enumerate(models):
-    #    topics.use_model(m, id_lst, str(key) + '-' + str(k))
-    # topics.use_model(models[0], id_lst, str(key) + '-best')
-    # topics.use_model(models[1], id_lst, str(key) + '-second_best')
-
+    def run_model(self, key, prepare_models, txt_data):
+        self.load_dic_cor(str(key))
+        if prepare_models:
+            models = self.topics_exp(txt_data, key)
+        else:
+            models = self.load_models(key)
+        # logging.info("{} topics model using".format(key))
+        return models
+        # for k, m in enumerate(models):
+        #    topics.use_model(m, id_lst, str(key) + '-' + str(k))
+        # topics.use_model(models[0], id_lst, str(key) + '-best')
+        # topics.use_model(models[1], id_lst, str(key) + '-second_best')
 
 # topics.id_list_month
-
-
-if __name__ == "__main__":
-    t1 = time.time()
-    regex_lda = re.compile('(model*.*gensim$)')
-    source_name, source_type = "wallstreetbets", "mongo"
-    prepare_data = False  # if true load data from mongo and prapre it. else load dic and corp from disk
-    prepare_models = False  # if true create models. else load models from disk
-    post_comment_flag = "post"
-    for i in range(1, 2):
-        removed_flag = i  # if True its all data, if False its only the removed
-        topics = TopicsAnalysis(source_name, removed_flag, prepare_data, post_comment_flag)
-        rng = list(topics.id_list_month.keys())
-        rng.append("general")
-        modelss = []
-        for month_key in tqdm(rng):
-            logging.info("{} topics model build".format(month_key))
-            if month_key == 'general':
-                ids_lst = topics.id_list
-                txt_dt = list(topics.text_data.values())[0]
-            else:
-                ids_lst = topics.id_list_month[month_key]
-                txt_dt = topics.text_data[month_key]
-            modelss.append(run_model(month_key, ids_lst, txt_dt))
-
-        for k, month_key in enumerate(tqdm(rng)):
-            logging.info("k = {}".format(k))
-            logging.info("{} topics model using".format(month_key))
-            if month_key == 'general':
-                ids_lst = topics.id_list
-                txt_dt = list(topics.text_data.values())[0]
-            else:
-                ids_lst = topics.id_list_month[month_key]
-                txt_dt = topics.text_data[month_key]
-            logging.info("start to use {}".format(month_key))
-            use_model(month_key, ids_lst, modelss[k])
-        t2 = time.time()
-        logging.info("final time {}".format(t2 - t1))
