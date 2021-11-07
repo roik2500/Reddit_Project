@@ -1,5 +1,6 @@
 import json
 
+import ijson
 import pymongo
 import os
 from datasets import tqdm
@@ -45,9 +46,12 @@ class Con_DB:
             "T")
         return time
 
-    # def get_cursor_from_json(self, file_name):
-    #     self.posts_cursor = json.load(file_name)
-    #     return self.posts_cursor
+    def get_data_cursor(self, source_name, source_type):
+        if source_type == 'json':
+            items = ijson.items(open("{}\{}.json".format(os.getenv("DATA_DIR"), source_name), 'rb'), 'item')
+        elif source_type == 'mongo':
+            items = self.myclient["reddit"][source_name]
+        return items
 
     def get_cursor_from_mongodb(self, db_name="reddit", collection_name=os.getenv("COLLECTION_NAME")):
         '''
@@ -253,8 +257,6 @@ class Con_DB:
         df = pd.read_csv(path, encoding='UTF8')
         return df
 
-
-
     '''
     This function making a json file from topic's csv file.
     the function filtering the large collection in MongoDB of full posts wsb 2020 and export the collection after filtering to JSON file
@@ -262,6 +264,7 @@ class Con_DB:
     :argument path_to_save_json - full path of directory of saving the json file 
     :argument collection_name - the name of collection(must be exactly the same name that wrote in MongoDB)
     '''
+
     def fromCSVtoJSON(self, path_to_csv, path_to_save_json, collection_name):
         topic_csv = self.read_fromCSV(path_to_csv)
         posts = self.get_cursor_from_mongodb(collection_name=collection_name)
@@ -273,4 +276,3 @@ class Con_DB:
                 file.write(dumps(document))
                 file.write(',')
             file.write(']')
-
