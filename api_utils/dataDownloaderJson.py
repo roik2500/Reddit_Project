@@ -1,6 +1,7 @@
 import datetime
 import asyncio
 import json
+import pickle
 import string
 import sys
 import time
@@ -22,13 +23,17 @@ from db_utils.Con_DB import Con_DB
 #     final = {"reddit_api": post_from_reddit, "pushift_api": sub}
 #     return final
 global chunk_size
-chunk_size = 10 * 1024 * 1024
+chunk_size = 850 * 1024
 global total_post_len
 total_post_len = 100000000
 global data
 data = {}
 global counter
-counter = 0
+counter = 5
+global tmp_id
+infile = open('ids.pkl', 'rb')
+tmp_id = pickle.load(infile)
+infile.close()
 
 
 async def insert_post(sub, pbar_):
@@ -36,41 +41,44 @@ async def insert_post(sub, pbar_):
     global counter
     global chunk_size
     global total_post_len
+    logging.info(len(data))
+    if sub['id'] in tmp_id:
+        start_time = time.time()
+        # try:
+        reddit.pushshift.convert_time_format(sub)
+        reddit_post = await reddit.extract_reddit_data_parallel(sub)
+        post = {
+            "post_id": sub["id"],
+            "reddit_api": reddit_post,
+            "pushift_api": sub
+        }
 
-    start_time = time.time()
-    # try:
-    reddit.pushshift.convert_time_format(sub)
-    reddit_post = await reddit.extract_reddit_data_parallel(sub)
-    post = {
-        "post_id": sub["id"],
-        "reddit_api": reddit_post, "pushift_api": sub
-    }
+        end_time = time.time()
+        elapsed_time_first_insert = end_time - start_time
+        end_time = time.time()
+        # except pymongo.errors.DuplicateKeyError:
+        #     print(reddit_post["pushift_api"]["id"] + " is already exist!")
+        #     return
+        end_reddit_time = time.time()
+        # con_db.update_to_db(sub["id"], reddit_post)
+        data[sub["id"]] = post
+        pbar_.update(1)
 
-    end_time = time.time()
-    elapsed_time_first_insert = end_time - start_time
-    end_time = time.time()
-    # except pymongo.errors.DuplicateKeyError:
-    #     print(reddit_post["pushift_api"]["id"] + " is already exist!")
-    #     return
-    end_reddit_time = time.time()
-    # con_db.update_to_db(sub["id"], reddit_post)
-    data[sub["id"]] = post
-    pbar_.update(1)
+        end_total_time = time.time()
+        elapsed_reddit_time = end_reddit_time - end_time
+        elapsed_second_insert_time = end_total_time - end_reddit_time
+        logging.info("id: {}, Extract from reddit time: {}.".format(sub["id"], elapsed_time_first_insert))
 
-    end_total_time = time.time()
-    elapsed_reddit_time = end_reddit_time - end_time
-    elapsed_second_insert_time = end_total_time - end_reddit_time
-    logging.info("id: {}, Extract from reddit time: {}.".format(sub["id"], elapsed_time_first_insert))
-    if sys.getsizeof(data) > chunk_size or len(data) >= total_post_len:
-        start_time_dump = time.time()
-        with open("{}_{}_{}.json".format(collection_name, year, counter), 'w') as f:
-            json.dump(data, f)
-        data = {}
-        counter += 1
-        pbar_.reset()
-        end_time_json = time.time()
-        elapsed_time_json_write = end_time_json - start_time_dump
-        logging.info("id: {}, 'write to json time: {}.".format(sub["id"], elapsed_time_json_write))
+        if sys.getsizeof(data) > chunk_size or len(data) >= total_post_len:
+            start_time_dump = time.time()
+            with open("json_wallstreetbets_2019_data/{}_{}_{}.json".format(collection_name, year, counter), 'w') as f:
+                json.dump(data, f)
+            data = {}
+            counter += 1
+            pbar_.reset()
+            end_time_json = time.time()
+            elapsed_time_json_write = end_time_json - start_time_dump
+            logging.info("id: {}, 'write to json time: {}.".format(sub["id"], elapsed_time_json_write))
 
 
 async def main(_submissions_list):
@@ -126,12 +134,12 @@ if __name__ == '__main__':
         # for month in tqdm(range(12, 13, 1)):
         # for day in tqdm(calendar.monthrange(year, month)):
         # logging.info("month: {}".format(month))
-        limit = 1000000
+        limit = total_post_len
         start_time = int(datetime.datetime(year, 1, 1).timestamp())
         # if month == 12:
         #     end_time = int(datetime.datetime(year+1, 1, 1).timestamp())
         # else:
-        end_time = int(datetime.datetime(year, 7, 1).timestamp())
+        end_time = int(datetime.datetime(year, 1, 31).timestamp())
 
         sub_reddit = 'politics'
         collection_name = sub_reddit
@@ -149,8 +157,20 @@ if __name__ == '__main__':
         logging.info("Extract from pushift time: {}".format(elapsed_time))
         submissions_list = submissions_list[last_index:]  # if you want to recover, change last index
         try:
-            asyncio.run(main(submissions_list))
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(main(submissions_list))
+            # asyncio.run(main(submissions_list, data, counter))
             break
+            if len(data) > 0:
+                start_time_dump = time.time()
+                with open("json_politics_2019_data/{}_{}_{}.json".format(collection_name, year, counter), 'w') as f:
+                    json.dump(data, f)
+                data = {}
+                counter += 1
+                pbar_.reset()
+                end_time_json = time.time()
+                elapsed_time_json_write = end_time_json - start_time_dump
+                logging.info("id: {}, 'write to json time: {}.".format(sub["id"], elapsed_time_json_write))
         except pymongo.errors.CursorNotFound:
             continue
 
