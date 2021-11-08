@@ -11,14 +11,15 @@ if __name__ == "__main__":
     t1 = time.time()
     regex_lda = re.compile('(model*.*gensim$)')
     source_name, source_type = "wallstreetbets_expr_shimon", "json"
-    prepare_data = True  # if true load data from mongo and prapre it. else load dic and corp from disk
+    prepare_data = True  # if true load data from mongo and prepare it. else from disk
+    prepare_dictionary_corpus = True  # if true prepare it. else from disk
     prepare_models = True  # if true create models. else load models from disk
     prepare_months = True  # if true apply for every month
     start, limit, step = 10, 25, 1
     post_comment_flag = "post"
     for i in range(1, 2):
         removed_flag = i  # if True its all data, if False its only the removed
-        topics = TopicsAnalysis(source_name, removed_flag, prepare_data, post_comment_flag, start, limit, step)
+        topics = TopicsAnalysis(source_name, removed_flag, prepare_data, prepare_dictionary_corpus,  post_comment_flag, start, limit, step)
         rng = list(topics.id_list_month.keys())
         rng.append("general")
         models = []

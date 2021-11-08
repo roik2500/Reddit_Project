@@ -25,7 +25,7 @@ logging.basicConfig(format='%(asctime)s %(message)s')
 
 
 class TopicsAnalysis:
-    def __init__(self, src_name, rmovd_flag, prep_data, post_comment, start, limit, step):
+    def __init__(self, src_name, rmovd_flag, prep_data, prep_dic_cor,  post_comment, start, limit, step):
         self.limit = limit
         self.start = start
         self.step = step
@@ -45,14 +45,20 @@ class TopicsAnalysis:
         self.con_db = Con_DB()
         # bring data from source
         if prep_data:
-            # self.data_cursor = self.con_db.get_cursor_from_mongodb(collection_name=src_name).find({})
-            # self.data_cursor = self.con_db.get_cursor_from_json("wallstreetbets_2020_full_")
             self.prepare_data()
         self.corpus = 0
         self.dictionary = 0
         self.id_list = self.load_pickle("id_lst")
         self.text_data = self.load_pickle("text_data")
         self.id_list_month = convert_tuples_to_dict(self.id_list)
+        if prep_dic_cor:
+            for k in self.text_data:
+                directory = "{}/{}".format(self.dir, k)
+                curr_text_data = self.text_data[k]
+                dump_prepared_data_files(directory, curr_text_data)
+            directory = "{}/general".format(self.dir)
+            curr_text_data = [txt for txt_data in list(self.text_data.values()) for txt in txt_data]
+            dump_prepared_data_files(directory, curr_text_data)
 
     def load_dic_cor(self, k):
         self.dictionary = corpora.Dictionary.load(self.dir + "/{}/dictionary.gensim".format(k))
@@ -84,16 +90,16 @@ class TopicsAnalysis:
                         tokens = prepare_text_for_lda(text)
                         text_data_dict.setdefault(month, []).append(tokens)
                         counter += 1
-
         pickle.dump(id_lst, open(self.dir + '/id_lst.pkl', 'wb'))
         pickle.dump(text_data_dict, open(self.dir + '/text_data.pkl', 'wb'))
-        for k in text_data_dict:
-            directory = "{}/{}".format(self.dir, k)
-            curr_text_data = text_data_dict[k]
-            dump_prepared_data_files(directory, curr_text_data)
-        directory = "{}/general".format(self.dir)
-        curr_text_data = [txt for txt_data in list(text_data_dict.values()) for txt in txt_data]
-        dump_prepared_data_files(directory, curr_text_data)
+        return text_data_dict
+        # for k in text_data_dict:
+        #     directory = "{}/{}".format(self.dir, k)
+        #     curr_text_data = text_data_dict[k]
+        #     dump_prepared_data_files(directory, curr_text_data)
+        # directory = "{}/general".format(self.dir)
+        # curr_text_data = [txt for txt_data in list(text_data_dict.values()) for txt in txt_data]
+        # dump_prepared_data_files(directory, curr_text_data)
 
     def topics_exp(self, text_data, month_name):
         self.perplexity_values = []
