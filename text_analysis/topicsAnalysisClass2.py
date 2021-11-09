@@ -134,7 +134,7 @@ class TopicsAnalysis:
         sent_topics_df = pd.DataFrame()
         month_name_model, best_second = month.split('-')
         corp = self.corpus
-        for i, row in enumerate(ldamodel[corp]):
+        for i, row in tqdm(enumerate(ldamodel[corp])):
             row = sorted(row, key=lambda x: (x[1]), reverse=True)
             for j, (topic_num, prop_topic) in enumerate(row):
                 if j == 0:  # => dominant topic
@@ -186,26 +186,29 @@ class TopicsAnalysis:
         for topic_id in tqdm(range(model.num_topics)):
             topk = model.show_topic(topic_id, 10)
             topk_words = [w for w, _ in topk]
+            # Create and generate a word cloud image:
+            joined_topk_words = " ".join(topk_words)
+            self.create_wordcloud(best_second, joined_topk_words, mod_name, model, month_name_model, topic_id)
             topic = '{}'.format(' '.join(topk_words))
             blob = TextBlob(topic)
             sentim = blob.sentiment.polarity
             print(topic, ": ", sentim)
-            # Create and generate a word cloud image:
-            joined_topk_words = " ".join(topk_words)
-            wordcloud = WordCloud().generate(joined_topk_words)
             sentiment_topics.append([topic_id, topic, sentim])
-            # Display the generated image:
-            plt.imshow(wordcloud, interpolation='bilinear')
-            plt.axis("off")
-            plt.title("topic #{} from {} with {} topics".format(topic_id, mod_name, model.num_topics))
-            # plt.show()
-            w_c_dir = self.dir + "/{}/{}/worldcloud".format(month_name_model, best_second)
-            pathlib.Path(w_c_dir).mkdir(parents=True, exist_ok=True)
-            # if not os.path.exists(w_c_dir):
-            #     os.mkdir(w_c_dir)
-            plt.savefig(w_c_dir + "/{}_worldcloud_{}".format(mod_name, topic_id))
         df = pd.DataFrame(data=sentiment_topics, columns=['topic_id', 'topic', 'sentim'])
         df.to_csv(self.dir + "/{}/{}/topic_sentim_{}.csv".format(month_name_model, best_second, mod_name))
+
+    def create_wordcloud(self, best_second, joined_topk_words, mod_name, model, month_name_model, topic_id):
+        wordcloud = WordCloud().generate(joined_topk_words)
+        # Display the generated image:
+        plt.imshow(wordcloud, interpolation='bilinear')
+        plt.axis("off")
+        plt.title("topic #{} from {} with {} topics".format(topic_id, mod_name, model.num_topics))
+        # plt.show()
+        w_c_dir = self.dir + "/{}/{}/worldcloud".format(month_name_model, best_second)
+        pathlib.Path(w_c_dir).mkdir(parents=True, exist_ok=True)
+        # if not os.path.exists(w_c_dir):
+        #     os.mkdir(w_c_dir)
+        plt.savefig(w_c_dir + "/{}_worldcloud_{}".format(mod_name, topic_id))
 
     def load_models(self, k):
         models = []
@@ -218,7 +221,7 @@ class TopicsAnalysis:
     def use_models(self, key, id_lst, models):
         logging.info("{} topics model using".format(key))
         for k, m in enumerate(models):
-            self.use_models(m, id_lst, str(key) + '-' + str(k))
+            self.extract_model_outputs(m, id_lst, str(key) + '-' + str(k))
 
     def create_or_load_model(self, key, prepare_models, txt_data):
         self.load_dic_cor(str(key))

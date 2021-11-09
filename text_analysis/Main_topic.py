@@ -20,8 +20,10 @@ if __name__ == "__main__":
     for i in range(1, 2):
         removed_flag = i  # if True its all data, if False its only the removed
         topics = TopicsAnalysis(source_name, removed_flag, prepare_data, prepare_dictionary_corpus,  post_comment_flag, start, limit, step)
-        rng = list(topics.id_list_month.keys())
-        rng.append("general")
+        rng = []
+        if prepare_months:
+            rng = list(topics.id_list_month.keys())
+        rng.insert(0, "general")
         models = []
         if prepare_models:
             for month_key in tqdm(rng):
@@ -32,7 +34,7 @@ if __name__ == "__main__":
         for k, month_key in enumerate(tqdm(rng)):
             logging.info("k = {}".format(k))
             logging.info("{} topics model using".format(month_key))
-            ids_lst, txt_dt = assign_txt_data_ids_list()
+            ids_lst, txt_dt = assign_txt_data_ids_list(month_key, topics)
             model = topics.create_or_load_model(month_key, False, txt_dt)
             logging.info("start to use {}".format(month_key))
             topics.use_models(month_key, ids_lst, model)
