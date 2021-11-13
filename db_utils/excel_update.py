@@ -83,15 +83,38 @@ def extract_info(f_name, root, flag):
              "banned_by", "author", "author_fullname", "selftext_reddit"]]
 
 
-regex_lda = re.compile('(document_topic_table*)')
+regex_csv = re.compile('(document_topic_table*)')
+regex_lda = re.compile('(^model.*gensim$)')
 
 # file_name = "C:/Users/shimon/Downloads/document_topic_table_general-best.csv"
 src_name = 'politics'
-for root, dirs, files in tqdm(os.walk(r"G:\.shortcut-targets-by-id\1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d\final_project\outputs\Outputs from cpu\politics_2020_full_\post\all\general")):
-    for file in tqdm(files):
-        if regex_lda.match(file):
-            concat_csv_from_mongo(r"G:\.shortcut-targets-by-id\1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d\final_project\data"
-                                  r"\wallstreetbets.csv", root+"\\"+file)
+for root, dirs, files in tqdm(
+        os.walk(r"G:\.shortcut-targets-by-id\1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d\final_project\outputs\Outputs from cpu\politics_2020_full_\post\all\general")):
+    for direc in dirs:
+        number = -1
+
+        for r, d, f in tqdm(os.walk(
+                r"G:\.shortcut-targets-by-id\1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d\final_project\outputs\Outputs from cpu\politics_2020_full_\post\all\general\{}".format(
+                    direc))):
+            for file in tqdm(f):
+                if regex_lda.match(file):
+                    number = int(file.split('model_')[1].split('topic')[0])
+                    break
+
+            counter = 0
+            for file in tqdm(f):
+                if regex_csv.match(file):
+                    # concat_csv_from_mongo(r"G:\.shortcut-targets-by-id\1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d\final_project\data"
+                    #                       r"\wallstreetbets.csv", root+"\\"+file)
+                    if counter == 1:
+                        file_split = file.split('general')
+                        os.rename(r + "\\" + file, r + "\\" + file_split[0] + 'general_' + str(number) + "_updated.csv")
+                    else:
+                        file_split = file.split('general')
+                        os.rename(r + "\\" + file, r + "\\" + file_split[0] + 'general_' + str(number) + ".csv")
+                        counter += 1
+        if number > -1:
+            os.rename(root + "\\" + direc, root + "\\" + str(number))
 
 
 # master_csv = extract_info("document_topic_table_general-20.csv", "", True)
