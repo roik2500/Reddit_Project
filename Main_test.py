@@ -12,7 +12,6 @@ import pandas as pd
 con = Con_DB()
 posts = con.get_cursor_from_mongodb(collection_name="wallstreetbets")
 # path = 'C:/Users/roik2/PycharmProjects/Reddit_Project/data/document_topic_table_general.csv'  # Change to your path in your computer
-path_csv = 'C:/Users/roik2/PycharmProjects/Reddit_Project/data/document_topic_table_general_best .csv'  # Change to your path in your computer
 path_drive = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs/'
 path_csv_topic = 'G:/.shortcut-targets-by-id/1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d/final_project/outputs' \
                  '/topic_modeling/wallstreetbets/post/all/general/best/document_topic_table_general-best.csv '
@@ -104,8 +103,6 @@ Creating a new folder in Google drive.
 :argument folderName - name of the new folder
 :return full path to the new folder
 '''
-
-
 def creat_new_folder_drive(folderName, oldpath):
     # newpath = r'{}'.format(path_drive)+'/{}'.format(folderName)
     path = os.path.join(oldpath, folderName)
@@ -118,8 +115,6 @@ def creat_new_folder_drive(folderName, oldpath):
 Test function
 This function creating graphs for posts are Removed/NotRemove/All
 '''
-
-
 def creatSentiment_and_statistic_Graph():
     for post in tqdm(posts.find({})):
         # text = con.get_posts_text(posts,"title")
@@ -210,12 +205,20 @@ This function creating graphs for all the topics (graph per topic)
 :argument path - path to csv file that contains the data of all topics
 :return graphs -> graph per topic
 '''
+def creat_Sentiment_Graph_For_Topics(path, collection_name, type_of_post,m_j):
+    path_csv_general = 'C:/Users/roik2/PycharmProjects/Reddit_Project/data/document_topic_table_general_best .csv'  # Change to your path in your computer
+    numofdiv=12
+    # There is two way to read data:
+    # 1- from csv file
+    # 2- from json file
+    if m_j =="mongo":
+        posts = con.get_cursor_from_mongodb(collection_name=collection_name)
+    else:
+        fj = open(json_file, 'rb')
+        posts = ijson.items(fj, 'item')
 
-
-def creat_Sentiment_Graph_For_Topics(path, collection_name, type_of_post):
-    posts = con.get_cursor_from_mongodb(collection_name=collection_name)
     # topic_set = Sentiment(collection_name, type_of_post)
-    topic_csv = con.read_fromCSV(path_csv)
+    topic_csv = con.read_fromCSV(path_csv_general)
     for topic_id in tqdm(topic_csv["Dominant_Topic"].unique()):
         dff = topic_csv[topic_csv["Dominant_Topic"] == topic_id]
         topic_set = Sentiment(collection_name, type_of_post)
@@ -224,9 +227,9 @@ def creat_Sentiment_Graph_For_Topics(path, collection_name, type_of_post):
             if post.count() == 0:
                 continue
             post = posts.find({"post_id": post_id})[0]
-            topic_set.update_sentiment(post, "year")  # iteration per month or per year
+            topic_set.update_sentiment(post, "year","post")  # iteration per month or per year
 
-        topic_set.draw_sentiment_time("pysentimiento", topic=topic_id, fullpath=path)
+        topic_set.draw_sentiment_time("pysentimiento",name=numofdiv, topic=topic_id, fullpath=path)
 
         # path_textblob_polarity = creat_new_folder_drive("textblob_polarity", path_drive + '/')
         # path_afin_polarity = creat_new_folder_drive("afin_polarity", path_drive + '/')
@@ -389,10 +392,11 @@ def comments_to_dicts(comments,dict_or_list):
     results = []  # create list for results
     for comment in comments:  # iterate over comments
         p = comment['data']
-        if 'created_utc' in comment['data']:
-            created = con.convert_time_format(comment['data']['created_utc'])[0]
-        else:
-            created = None
+        if 'created_utc' not in comment['data'] or 'linkid' not in comment["data"]:
+            return results
+
+        created = con.convert_time_format(comment['data']['created_utc'])[0]
+
 
         id = comment['data']['id']
         is_removed = con.is_removed(comment, "comment", "Removed")
@@ -402,10 +406,8 @@ def comments_to_dicts(comments,dict_or_list):
             'body'] != "[deleted]":
             text = comment['data']['body']
 
-        if 'linkid' in comment["data"]:
-            link_id = comment["data"]['link_id'][3:]
-        else:
-            link_id = None
+        link_id = comment["data"]['link_id'][3:]
+
 
         item = {
             "id": id,
@@ -417,11 +419,12 @@ def comments_to_dicts(comments,dict_or_list):
         }  # create dict from comment
 
         # check if there is a sub_comments and also check the method of the recursion (dict by hierarchy or list)
-        if len(comment['data']['replies']) > 0 and dict_or_list == 'dict':
-            item["replies"] = comments_to_dicts(
-                comment['data']['replies']['data']['children'], 'dict')  # convert replies using the same function
-        elif len(comment['data']['replies']) > 0 and dict_or_list == 'list':
-            comments_to_dicts(comment['data']['replies']['data']['children'], 'list')
+        if 'replies' in comment['data']:
+            if len(comment['data']['replies']) > 0 and dict_or_list == 'dict':
+                item["replies"] = comments_to_dicts(
+                    comment['data']['replies']['data']['children'], 'dict')  # convert replies using the same function
+            elif len(comment['data']['replies']) > 0 and dict_or_list == 'list':
+                comments_to_dicts(comment['data']['replies']['data']['children'], 'list')
 
         results.append(item)  # add converted item to results
 

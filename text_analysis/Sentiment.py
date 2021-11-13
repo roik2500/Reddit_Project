@@ -242,7 +242,7 @@ class Sentiment:
 
         if fullpath != "":
             if topic != "" and name != "":
-                plt.savefig('{}/{} {}({}).png'.format(fullpath, fileName, topic, name))
+                plt.savefig('{}/{} ({}).png'.format(fullpath, name,topic))
 
             elif topic != "" and name == "":
                 plt.savefig('{}/{} {}.png'.format(fullpath, fileName, topic))
