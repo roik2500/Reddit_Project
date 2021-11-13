@@ -25,7 +25,7 @@ logging.basicConfig(format='%(asctime)s %(message)s')
 
 
 class TopicsAnalysis:
-    def __init__(self, src_name, rmovd_flag, prep_data, prep_dic_cor,  post_comment, start, limit, step):
+    def __init__(self, src_name, source_type, rmovd_flag, prep_data, prep_dic_cor,  post_comment, start, limit, step):
         self.limit = limit
         self.start = start
         self.step = step
@@ -34,6 +34,7 @@ class TopicsAnalysis:
         self.post_comment = post_comment
         self.dir = "{}/{}/{}".format(os.getenv('OUTPUTS_DIR'), src_name, self.post_comment)
         self.src_name = src_name
+        self.source_type = source_type
         if self.removed_flag:
             self.dir += "/all"
         else:
@@ -75,7 +76,7 @@ class TopicsAnalysis:
     def prepare_data(self):
         id_lst, text_data_dict, curr_text_data = [], {}, []
         counter = 0
-        items = self.con_db.get_data_cursor("wallstreetbets_2020_full_", 'json')
+        items = self.con_db.get_data_cursor(self.src_name, self.source_type)
         with tqdm(total=500000) as pbar:
             for x in items:
                 if counter == 200:
@@ -111,9 +112,13 @@ class TopicsAnalysis:
             self.perplexity_values.append(perplexity_value)
             self.coherence_values.append(coherence_lda)
             lda_models.append((ldamodel, perplexity_value, num_of_topic))
+            # directory = self.dir + "/{}/{}".format(month_name, num_of_topic)
+            # pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
+            # ldamodel[0].save(
+            #     '{}/model_{}topic_{}.gensim'.format(directory, ldamodel[2], month_name))
         lda_models.sort(key=lambda x: x[1])
         for k, m in enumerate(lda_models):
-            directory = self.dir + "/{}/{}".format(month_name, k)
+            directory = self.dir + "/{}/{}".format(month_name, m[2])
             pathlib.Path(directory).mkdir(parents=True, exist_ok=True)
             m[0].save(
                 '{}/model_{}topic_{}.gensim'.format(directory, m[2], month_name))
@@ -153,7 +158,7 @@ class TopicsAnalysis:
 
         sent_topics_df = sent_topics_df.reset_index()
         sent_topics_df.to_csv(
-            self.dir + "/{}/{}/document_topic_table_{}.csv".format(month_name_model, best_second, month))
+            self.dir + "/{}/{}/{}_document_topic_table_{}.csv".format(month_name_model, best_second, self.src_name, month))
         print(sent_topics_df.head(15))
 
     def extract_coh_prex_plots(self, month_name):
@@ -220,8 +225,10 @@ class TopicsAnalysis:
 
     def use_models(self, key, id_lst, models):
         logging.info("{} topics model using".format(key))
+        cnt = self.start
         for k, m in enumerate(models):
-            self.extract_model_outputs(m, id_lst, str(key) + '-' + str(k))
+            self.extract_model_outputs(m, id_lst, str(key) + '-' + str(cnt))
+            cnt += self.step
 
     def create_or_load_model(self, key, prepare_models, txt_data):
         self.load_dic_cor(str(key))

@@ -11,6 +11,13 @@ db_utills = Con_DB()
 curs = db_utills.get_cursor_from_mongodb(collection_name="politics")
 
 
+def concat_csv_from_mongo(path_from_mongo, path_from_running):
+    mongo_file = pd.read_csv(path_from_mongo)
+    output_file = pd.read_csv(path_from_running)
+    df3 = output_file.merge(mongo_file, on="post_id", how='inner')
+    df3.to_csv("{}_updated.csv".format(path_from_running.split('.csv')[0]))
+
+
 def extract_info(f_name, root, flag):
     file_name = '{}{}'.format(root, f_name)
     if flag:
@@ -80,8 +87,14 @@ regex_lda = re.compile('(document_topic_table*)')
 
 # file_name = "C:/Users/shimon/Downloads/document_topic_table_general-best.csv"
 src_name = 'politics'
+for root, dirs, files in tqdm(os.walk(r"G:\.shortcut-targets-by-id\1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d\final_project\outputs\Outputs from cpu\politics_2020_full_\post\all\general")):
+    for file in tqdm(files):
+        if regex_lda.match(file):
+            concat_csv_from_mongo(r"G:\.shortcut-targets-by-id\1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d\final_project\data"
+                                  r"\wallstreetbets.csv", root+"\\"+file)
 
-master_csv = extract_info("document_topic_table_general-20.csv", "", True)
+
+# master_csv = extract_info("document_topic_table_general-20.csv", "", True)
 # for i, row in tqdm(topics_doc.iterrows()):
 # for root, dirs, files in os.walk("/home/shouei/wallstreetbets/post/all"):
 #     file_name = '?'
