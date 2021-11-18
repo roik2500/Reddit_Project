@@ -55,7 +55,7 @@ class Statistic:
     bar  blue - neutral 
     bar  green - negative 
     '''
-    def draw_statistic_bars(self, sentimentObject,path=""):
+    def draw_statistic_bars(self, sentimentObject,path="",name=""):
         x = list(sentimentObject.text_per_month.keys())
         k = [val['positive'] for val in sentimentObject.sentiment_per_month.values()]
         y = [val['neutral'] for val in sentimentObject.sentiment_per_month.values()]
@@ -77,8 +77,8 @@ class Statistic:
         self.autolabel(rects3,ax)
 
 
-        # if path !="":
-        #     plt.savefig('{}/{} {}.png'.format(path, self.subreddit, self.type_of_post))
+        if path !="":
+            plt.savefig('{}/{} {}.png'.format(path, self.subreddit, name))
 
         return plt.show()
     '''
@@ -102,5 +102,13 @@ class Statistic:
         print("Video Precentage: " + str(round((self.num_of_video / self.numOfPosts) * 100, 4)) + "%")
         print("Image Precentage: " + str(round((self.num_of_img / self.numOfPosts) * 100, 4)) + "%\n")
         #print("sub-reddit: politics\n Total Posts: 5000\n Year: 2020")
-        return {'num_of_video':self.num_of_video,'num_of_img':self.num_of_img,'numOfPosts':self.numOfPosts}
 
+        text = ["Statistic for {} \n:".format(self.type_of_post), "Num of posts: {} \n".format(self.numOfPosts),
+                "Num of images: {} \n".format(self.num_of_img), "Num of videos: {} \n".format(self.num_of_video),
+                "Video Precentage: " + str(round((self.num_of_video / self.numOfPosts) * 100, 4)) + "% \n",
+                "Image Precentage: " + str(round((self.num_of_img / self.numOfPosts) * 100, 4)) + "%\n"]
+        file = open('statistic_information.txt', 'w')
+        file.writelines(text)
+        file.close()
+
+        return {'num_of_video': self.num_of_video, 'num_of_img': self.num_of_img, 'numOfPosts': self.numOfPosts}

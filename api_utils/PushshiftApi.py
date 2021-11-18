@@ -12,7 +12,7 @@ from psaw import PushshiftAPI
 from tqdm import tqdm
 
 
-class PushshiftApi:
+class PushshiftApi(object):
     def __init__(self):
         self.api_psaw = PushshiftAPI()
         self.api_pmaw = PushshiftApiPmaw()
@@ -56,13 +56,16 @@ class PushshiftApi:
 
         return submissions
 
-    def search_submissions_and_comments(self, Subreddit, start_time, end_time, filter, Limit, mod_removed_boolean,
+    def search_submissions_and_comments(self, Subreddit, filter, Limit, mod_removed_boolean,
                                         user_removed_boolean):
         # The `search_comments` and `search_submissions` methods return generator objects
         posts = self.api_pmaw.search_submissions(subreddit=Subreddit, limit=Limit, filter=filter,
                                                  mod_removed=mod_removed_boolean,
-                                                 user_removed=user_removed_boolean, after=start_time, before=end_time,
+                                                 user_removed=user_removed_boolean,
                                                  can_gild=True)
+        for post in posts:
+            date = datetime.datetime.fromtimestamp(int(post['created_utc'])).isoformat()
+
         submissions = [post for post in posts]
         submission_ids_list = []
 
@@ -156,21 +159,23 @@ class PushshiftApi:
         df = pd.read_csv(path)
         return df
 
-    # # Press the green button in the gutter to run the script.
-    # if __name__ == '__main__':
-    #     # df = pd.read_json(r'C:\Users\roik2\PycharmProjects\Reddit_Project\sampleJsonPosts.json')
-    #
-    #     # subreddits_df = read_from_csv(r"C:\Users\shimon\Downloads\subreddits_basic.csv")
-    #
-    #     start_time = int(datetime.datetime(2019, 1, 1).timestamp())
-    #     # subreddits_col_name = subreddits_df.columns[3]
-    #     # subreddits_name = subreddits_df.loc[:, str(subreddits_col_name)]
-    #
-    #     search_submissions_and_comments(Subreddit='mexico', start_time=start_time,
-    #                                     filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id', 'link_id',
-    #                                             'created_utc', 'retrieved_on', 'can_gild'],
-    #                                     Limit=35000, mod_removed_boolean=True, user_removed_boolean=True)
+# # Press the green button in the gutter to run the script.
+if __name__ == '__main__':
+    # df = pd.read_json(r'C:\Users\roik2\PycharmProjects\Reddit_Project\sampleJsonPosts.json')
 
+    # subreddits_df = read_from_csv(r"C:\Users\shimon\Downloads\subreddits_basic.csv")
+    p = PushshiftApi()
+    comments = p.api_pmaw.search_comments(ids=['hflpkl1'])
+    start_time = int(datetime.datetime(2019, 1, 1).timestamp())
+    end_time = int(datetime.datetime(2019, 1, 2).timestamp())
+        # subreddits_col_name = subreddits_df.columns[3]
+    #subreddits_name = subreddits_df.loc[:, str(subreddits_col_name)]
+    a = PushshiftApi()
+    a.search_submissions_and_comments(Subreddit='wallstreetbets',
+                                filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id', 'link_id',
+                                        'created_utc', 'retrieved_on', 'can_gild'],
+                                Limit=3, mod_removed_boolean=True, user_removed_boolean=True)
+#
     # for subreddit_name in subreddits_name:
     #     search_submissions_and_comments(Subreddit=subreddit_name, start_time=start_time,
     #                                     filter=['url', 'author', 'title', 'subreddit', 'selftext', 'id', 'link_id'],

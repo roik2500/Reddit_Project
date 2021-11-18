@@ -48,7 +48,7 @@ async def write_to_mongo(sub, pbar_):
     logging.info("id: {}, Extract from reddit time: {}. Insert to db first time: {}. Insert to db second time: {}".format(sub["id"], elapsed_reddit_time,
                                                                                               elapsed_time_first_insert,
                                                                                               elapsed_second_insert_time))
-#
+
 # async def write_to_mongo(sub, pbar_):
 #     start_time = time.time()
 #     try:
@@ -67,7 +67,7 @@ async def write_to_mongo(sub, pbar_):
 #     logging.info("Extract from reddit time: {}. Insert to db time: {}. Total time: {}".format(elapsed_time_red_api,
 #                                                                                               elapsed_mongo_time,
 #                                                                                               elapsed_total_time))
-#
+
 
 
 async def main(_submissions_list):
@@ -77,9 +77,9 @@ async def main(_submissions_list):
 
 async def fix_reddit_empty_posts():
     # counter = 0
-    for character in string.ascii_lowercase[7:]:
+    for character in range(4, 8):
         print(character)
-        curs = mycol.find({'reddit_api': [], 'post_id': {'$regex': '^j{}'.format(character)}})
+        curs = mycol.find({'reddit_api': [], 'post_id': {'$regex': '^h{}'.format(character)}})
         print("here")
         pbar = tqdm(total=50000)
         await asyncio.gather(*[fix_one_post(post, pbar) for post in curs])
@@ -102,6 +102,12 @@ async def fix_one_post(post, pb):
         pb.update(1)
     except prawcore.exceptions.NotFound:
         logging.info('{} returned 404'.format(pid))
+        return
+    except prawcore.exceptions.ServerError:
+        logging.info('{} returned 500'.format(pid))
+        return
+    except prawcore.exceptions.ResponseException:
+        logging.info('{} returned 502'.format(pid))
         return
 
 

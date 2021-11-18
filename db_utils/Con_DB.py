@@ -1,7 +1,10 @@
+import json
+
 import pymongo
 import os
+from datasets import tqdm
+from bson.json_util import dumps
 from dotenv import load_dotenv
-from pprint import pprint
 import pandas as pd
 from datetime import datetime
 from db_utils.FileReader import FileReader
@@ -31,19 +34,26 @@ class Con_DB:
         self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB"))
         self.posts_cursor = None
         self.file_reader = FileReader()
-        # self.path = "C:\\Users\\User\\Documents\\FourthYear\\Project\\resources\\wallstreetbets_2020_full_.json"
+        #self.path = "/home/shouei/wallstreetbets_2020_full_.json"
         self.path = os.getenv('DATA_PATH')
         self.pushshift_api = PushshiftApi()
         self.reddit_api = reddit_api()
 
-    def setAUTH_DB(self,num):
+    def setAUTH_DB(self, num):
         self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB{}".format(num)))
+
+    def get_posts_text(self, posts, name):
+        return posts.find({'{}'.format(name): {"$exists": True}})
 
     def convert_time_format(self, comment_or_post):
         time = datetime.fromtimestamp(
             int(comment_or_post)).isoformat().split(
             "T")
         return time
+
+    # def get_cursor_from_json(self, file_name):
+    #     self.posts_cursor = json.load(file_name)
+    #     return self.posts_cursor
 
     def get_cursor_from_mongodb(self, db_name="reddit", collection_name=os.getenv("COLLECTION_NAME")):
         '''
@@ -52,24 +62,21 @@ class Con_DB:
         :argument collection_name: collection name inside your db name. TYPE- str
         :return: data from mongodb
         '''
+        #         db_name = 'local'
         mydb = self.myclient[db_name]
         self.posts_cursor = mydb[collection_name]
         return self.posts_cursor
         # return self.file_reader.get_json_iterator(self.path)
 
-
-    def get_cursor_from_mongodb_for_real(self, db_name="reddit", collection_name=os.getenv("COLLECTION_NAME")):
-        '''
-        This function is return the posts from mongoDB
-        :argument db_name: name of the db that you want to connect. TYPE- str
-        :argument collection_name: collection name inside your db name. TYPE- str
-        :return: data from mongodb
-        '''
-        # db_name = 'local'
-        mydb = self.myclient[db_name]
-        self.posts_cursor = mydb[collection_name]
-        return self.posts_cursor
-        # return self.file_reader.get_json_iterator(self.path)
+    def searchConnectionByPostId(self, post_id):
+        for i in range(1, 5):
+            temp_id = self.setAUTH_DB(i)
+            p = self.get_cursor_from_mongodb()
+            post = p.find({"post_id": post_id})
+            if post.count() == 0:
+                continue
+            else:
+                return p
 
     '''
     :argument
@@ -79,6 +86,35 @@ class Con_DB:
     post return Array that have the title and selftext
     comment return Array that the comments separated by '..', '...' 
     '''
+
+    # {"body": comment['data']['body'],
+    #             "created": self.convert_time_format(comment['data']['created_utc'])[0],
+    #             "id": comment['data']['id'],
+    #             "link_id": comment['data']['link_id'][2:],
+    #             "is_removed": self.is_removed(comment, "comment", "Removed")}
+
+    def comments_to_dicts(self, comments, created):
+        results = []  # create list for results
+        # created = '2020-10-10'
+        for comment in comments:  # iterate over comments
+            if 'created_utc' in comment['data']:
+                created = self.convert_time_format(comment['data']['created_utc'])[0]
+            id = comment['data']['id']
+            is_removed = self.is_removed(comment, "comment", "Removed")
+            text = ''
+            if "body" in comment["data"] and not comment['data']['body'].__contains__(
+                    "[removed]") and comment['data']['body'] != "[deleted]":
+                text = comment['data']['body']
+            link_id = ['link_id'][2:]
+
+            item = [[text, created, id, comment['data'], link_id, is_removed]]  # create list from comment
+
+            if 'replies' in comment["data"] and len(comment['data']['replies']) > 0:
+                replies = comment['data']['replies']['data']['children']
+                item += self.comments_to_dicts(replies, created=created)  # convert replies using the same function item["replies"] =
+
+            results += item  # add converted item to results
+        return results  # return all converted comments
 
     def comments_to_lists(self, comments, created, link_id):
         results = []  # create list for results
@@ -112,6 +148,7 @@ class Con_DB:
 
             results += item  # add converted item to results
         return results  # return all converted comments
+
 
     def get_text_from_post_OR_comment(self, _object, post_or_comment):
         if post_or_comment == 'post':
@@ -178,27 +215,23 @@ class Con_DB:
             else:
                 self.add_filed(data='reddit_api')
 
+    #def get_specific_items_by_post_ids(self, ids_list, post_or_comment_arg):
+    #    # file_reader_new = FileReader()
+        # data_cursor = file_reader_new.get_json_iterator(self.path)
+    #    data_cursor = self.posts_cursor.find(
+    #       {u'pushift_api.id': {'$in': ids_list}}
+    #    )
+    #    text_and_date_list = []
+    #    for item in data_cursor:
+    #        if item['pushift_api']['id'] in ids_list:
+    #            text_and_date_list.append(self.get_text_from_post_OR_comment(item, post_or_comment=post_or_comment_arg))
+    #    return text_and_date_list  # [title , selftext ,created_utc, 'id']
+
     def get_posts_by_ids(self, posts_ids):
         posts_cursor = self.get_cursor_from_mongodb(collection_name=os.getenv("COLLECTION_NAME"))
         return self.posts_cursor.find(
             {u'pushift_api.id': {'$in': posts_ids}}
         )
-
-    def get_full_data_by_object_ids_from_mongodb(self, ids_list, post_or_comment_arg, NER_TYPE):
-        if post_or_comment_arg == 'post':
-            file_reader_new = FileReader()
-            db_name = 'local'
-            mydb = self.myclient[db_name]
-            posts_cursor = mydb[os.getenv("COLLECTION_NAME")]
-            # data_cursor = file_reader_new.get_json_iterator(self.path)
-            data_cursor = posts_cursor.find(
-                {u'post_id': {'$in': ids_list}}
-            )
-            text_and_date_dict = {NER_TYPE : []}
-            for item in data_cursor:
-                if item['post_id'] in ids_list:
-                    text_and_date_dict[NER_TYPE].append(item)
-            return text_and_date_dict
 
     def get_specific_items_by_object_ids(self, ids_list, post_or_comment_arg):
         if post_or_comment_arg == 'post':
@@ -206,9 +239,9 @@ class Con_DB:
             # db_name = 'local'
             # mydb = self.myclient[db_name]
             # posts_cursor = mydb[os.getenv("COLLECTION_NAME")]
-            posts_cursor = self.posts_cursor
+            #posts_cursor = self.posts_cursor
             # data_cursor = file_reader_new.get_json_iterator(self.path)
-            data_cursor = posts_cursor.find(
+            data_cursor = self.posts_cursor.find(
                {u'post_id': {'$in': ids_list}}
             )
             text_and_date_list = []
@@ -312,43 +345,40 @@ class Con_DB:
             return True  # was False and shai change to True because if there is no body so it was removed
 
     '''
-     This function making a json file from topic's csv file.
-     the function filtering the large collection in MongoDB of full posts wsb 2020 and export the collection after filtering to JSON file
-     :argument path_to_csv - full path to csv file of specific topic
-     :argument path_to_save_json - full path of directory of saving the json file 
-     :argument collection_name - the name of collection(must be exactly the same name that wrote in MongoDB)
-     '''
+       This function reading Data from CSV file
+       :argument path - path to csv file in this computer
+       :return rows from csv
+    '''
 
+    def read_fromCSV(self, path):
+        df = pd.read_csv(path, encoding='UTF8')
+        return df
+
+
+
+    '''
+    This function making a json file from topic's csv file.
+    the function filtering the large collection in MongoDB of full posts wsb 2020 and export the collection after filtering to JSON file
+    :argument path_to_csv - full path to csv file of specific topic
+    :argument path_to_save_json - full path of directory of saving the json file 
+    :argument collection_name - the name of collection(must be exactly the same name that wrote in MongoDB)
+    '''
     def fromCSVtoJSON(self, path_to_csv, path_to_save_json, collection_name):
         topic_csv = self.read_fromCSV(path_to_csv)
         posts = self.get_cursor_from_mongodb(collection_name=collection_name)
         dff = list(topic_csv["post_id"].unique())
         with open('{}/{}.json'.format(path_to_save_json, collection_name), 'w') as file:
             cursor = posts.find({'post_id': {'$in': dff}}).max_time_ms(1000000)
-            # json.dump(dumps(cursor), file)
-
             file.write('[')
             for document in cursor:
                 file.write(dumps(document))
                 file.write(',')
             file.write(']')
 
-
-    '''
-       This function reading Data from CSV file
-       :argument path - path to csv file in this computer
-       :return rows from csv
-       '''
-
-    def read_fromCSV(self, path):
-        df = pd.read_csv(path)
-        return df
-
     def read_posts_from_mongo_write_to_json(self, ids_list, file_name):
         path = os.getenv('NER_POSTS_FOLDER') + file_name
         posts = self.get_specific_items_by_object_ids_from_mongodb(ids_list=ids_list, post_or_comment_arg='posts')
-        self.file_reader.write_dict_to_json(path=path,file_name=file_name, dict_to_write=posts.__dict__)
-
+        self.file_reader.write_dict_to_json(path=path, file_name=file_name, dict_to_write=posts.__dict__)
 
     def get_post_id_from_json_and_write_full_posts(self):
         path = os.getenv('NER_POSTS_FOLDER') + 'True_NER_per_month.json'
