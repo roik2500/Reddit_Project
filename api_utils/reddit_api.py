@@ -4,7 +4,7 @@ import os
 from dotenv import load_dotenv
 import datetime
 from api_utils.PushshiftApi import PushshiftApi
-load_dotenv("../.env3")
+load_dotenv()
 #
 # # note that CLIENT_ID refers to 'personal use script' and SECRET_TOKEN to 'token'
 # auth = requests.auth.HTTPBasicAuth(os.getenv('CLIENT_ID'), os.getenv('CLIENT_SECRET'))
@@ -28,12 +28,13 @@ load_dotenv("../.env3")
 # headers = {**headers, **{'Authorization': f"bearer {TOKEN}"}}
 #
 # # while the token is valid (~2 hours) we just add headers=headers to our requests
-# requests.get('https://oauth.reddit.com/api/v1/me', headers=headers)
+# res = requests.get('https://oauth.reddit.com/api/v1/me', headers=headers)
 #
-# res = requests.get("https://oauth.reddit.com/r/python/hot",
-#                    headers=headers)
+# # res = requests.get("https://oauth.reddit.com/r/wallstreetbets/hot",
+# #                    headers=headers)
 #
-# print(res.json())  # let's see what we get
+# for post in res.json()['data']['children']:
+#     print(post['data']['title'])  # let's see what we get
 
 
 
@@ -64,9 +65,18 @@ class reddit_api:
             {"post": post_from_reddit[0]['data']['children'][0]['data'],
              "comments": post_from_reddit[1]['data']['children']
              }
-
-
         return relevent_data_post_from_reddit
+
+    def get_user_commnets(self, reddit_user_name):
+        return self.reddit.redditor(reddit_user_name).comments.new(limit=1000)
+
+    def get_removed_comment_from_reddit(self, user_comments, removed_comment_id):
+        try:
+            for comment in user_comments:
+                if comment.id == removed_comment_id:
+                    return comment.body
+        except:
+            print('user has deleted')
     # async def extract_reddit_data_parallel(self, sub):
     #     url = sub["permalink"]
     #     self.pushshift.convert_time_format(sub)
@@ -88,7 +98,8 @@ class reddit_api:
 
 if __name__ == '__main__':
     reddit = reddit_api()
-    submission_reddit = reddit.reddit.submission(id= "hgp8pd")
+    comment_reddit = reddit.get_user_commnets(reddit_user_name="Remarkable_Fish_1127")
+    submission_reddit = reddit.get_removed_comment_from_reddit(comment_reddit,removed_comment_id="hj9ty0p")
     print(submission_reddit)
 
 # path = r'C:\Users\shimon\Visual Studio Code Projects\Reddit_Project'

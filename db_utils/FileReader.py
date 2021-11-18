@@ -10,8 +10,11 @@ import pymongo
 import os
 import csv
 
+
 class FileReader:
 
+    def __init__(self):
+        self.json_open_file = None
 
     ''' :return dict '''
     def read_from_json_to_dict(self, PATH):
@@ -42,19 +45,11 @@ class FileReader:
 
     def get_specific_items_by_post_ids_from_json(self, ids_list):
         text_and_date_list = []
-        with open('C://Users//User//Documents//FourthYear//Project//resources//wallstreetbets_2020_full_.json') as json_file:
+        with open(os.getenv('DATA_PATH')) as json_file:
             data = json.load(json_file)
             for key_id in ids_list:
                 post = data[key_id]
                 text_and_date_list.append(self.get_text_from_post_OR_comment(post, post_or_comment='post'))
-
-        # cursor = self.posts_cursor.find(
-        #     {u'pushift_api.id': {'$in': ids_list}}
-        # )
-        # # return cursor
-        # text_and_date_list = []
-        # for post in cursor:
-        #     text_and_date_list.append(self.get_text_from_post_OR_comment(post, post_or_comment='post'))
         return text_and_date_list  # [title , selftext ,created_utc, 'id']
 
     '''
@@ -62,13 +57,41 @@ class FileReader:
     @:return return json iterator to the file.
     '''
     def get_json_iterator(self, json_file):
-        fj = open(json_file, 'rb')
-        items = ijson.items(fj, 'item')
+        if self.json_open_file != None and self.json_open_file.open:
+            self.json_open_file.closed()
+        self.json_open_file = open(json_file, 'rb')
+        items = ijson.items(self.json_open_file, 'item')
         return items
 
 
+    def topic_number_connected_posts(self, path, folder_to_save, number_of_topic=20):
+        topic_df = self.read_from_csv(path)
+        topic_num_posts_dict = {}
+        for topic_number in range(number_of_topic):
+            topic_num_posts_dict[topic_number] = topic_df.loc[topic_df['Dominant_Topic'] == topic_number]['post_id'].to_list()
+        return topic_num_posts_dict
+        # self.write_dict_to_json(path=folder_to_save,
+        #                         file_name='topic_posts', dict_to_write=topic_num_posts_dict)
+
+    def write_dict_to_csv(self, file_name, dictionary):
+        with open(file_name, 'w') as csv_file:
+            writer = csv.writer(csv_file)
+            for key, value in dictionary.items():
+               writer.writerow([key, value])
+
+    def read_dict_from_csv(self, file_name):
+        with open(file_name) as csv_file:
+            reader = csv.reader(csv_file)
+            mydict = dict(reader)
+        return mydict
+
+
+
 # Press the green button in the gutter to run the script.
-# if __name__ == '__main__':
+if __name__ == '__main__':
+    path = 'C:\\Users\\User\\Documents\\FourthYear\\Project\\document_topic_table_general-1_updated\\document_topic_table_general-1_updated.csv'
+    file_reader = FileReader()
+    file_reader.topic_number_connected_posts(path)
     # path = "C:/Users/User/Documents/FourthYear/Project/resources/RC_2020-01-01 - Minified.json"
     # # reader = Reader()
     # # submisstions = reader.read_from_json(path)

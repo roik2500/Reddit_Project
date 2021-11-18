@@ -11,6 +11,10 @@ import pandas as pd
 from tqdm import tqdm
 from db_utils.Con_DB import Con_DB
 from Classifier.word_embeddings_spaCy import WordEmbedding
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
 ''' supervised model'''
 
 
@@ -22,9 +26,9 @@ class Model:
         self.df_test = pd.DataFrame()
         self.train_labels = None
         self.test_labels = None
-        file_reader = FileReader()
+        self.file_reader = FileReader()
         self.con_db = Con_DB()
-        self.json_data_cursor = file_reader.get_json_iterator(json_file=path_data)
+        self.json_data_cursor = self.file_reader.get_json_iterator(json_file=path_data)
         self.post_or_comment_model = post_or_comment_model
         self.word_embedding = WordEmbedding()
 
@@ -32,23 +36,29 @@ class Model:
     def split_corpus(self):
         podtid_emdeding_label = []
         for item_cursor in tqdm(self.json_data_cursor):
-            reddit_items = self.con_db.get_text_from_post_OR_comment(object=item_cursor, post_or_comment=self.post_or_comment_model)
+            reddit_items = self.con_db.get_text_from_post_OR_comment(_object=item_cursor, post_or_comment=self.post_or_comment_model)
             for reddit_item in reddit_items:
                 embedding_vector_for_reddit_item = self.word_embedding.get_emdeding_post_vec_avg(reddit_item[0])
                 podtid_emdeding_label.append((reddit_item[1], embedding_vector_for_reddit_item, reddit_item[-1]))
         input_df = pd.DataFrame(data=podtid_emdeding_label, columns=['Post_id', 'embeding', 'label'])
         border = int(self.MAX_POST_NUMBER*0.8)
 
+        data_path = os.getenv('OUTPUTS_DIR') + 'data/'
         self.df_train = np.array(input_df.iloc[:border, [0, 1]])
+        self.file_reader.write_to_csv(path=data_path, file_name='train_set.CSV', df_to_write=self.df_train)
         print('self.df_train.shape', self.df_train.shape)
 
         self.df_test = np.array(input_df.iloc[border:, [0, 1]])
+        self.file_reader.write_to_csv(path=data_path, file_name='test_set.CSV', df_to_write=self.df_test)
+
         print('self.df_test.shape', self.df_test.shape)
 
         self.train_labels = self.df_train[:, 2]
+        self.file_reader.write_to_csv(path=data_path, file_name='train_labels.CSV', df_to_write=self.train_labels)
         print('self.train_labels.shape', self.train_labels.shape)
 
         self.test_labels = self.df_test[:, 2]
+        self.file_reader.write_to_csv(path=data_path, file_name='test_labels.CSV', df_to_write=self.test_labels)
         print('self.test_labels.shape', self.test_labels.shape)
 
         print("Done")

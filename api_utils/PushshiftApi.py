@@ -1,3 +1,5 @@
+from pprint import pprint
+
 from pmaw import PushshiftAPI as PushshiftApiPmaw
 import datetime
 import requests
@@ -96,6 +98,9 @@ class PushshiftApi:
         posts_df.to_csv('data_35000_psio.csv')
         # comments_df.to_json(path + '\sampleJsonComments.json', orient="index")
 
+    def get_comments_by_comments_ids(self, ids_list):
+        return self.api_pmaw.search_comments(ids=ids_list)  # return generator
+
     def convert_time_format(self, comment_or_post):
         comment_or_post['created_utc'] = datetime.datetime.fromtimestamp(
             comment_or_post['created_utc']).isoformat().split(
@@ -176,3 +181,10 @@ class PushshiftApi:
     #
     # search_comments_with_query(subreddit='wallstreetbets', start_time=start_time, end_time=[],
     #                            query='AMC', limit=10, mod_removed_boolean=False, user_removed_boolean=True)
+
+if __name__ == '__main__':
+    api = PushshiftApi()
+    comment_ids = ['fq7rqzq']
+    comments = api.get_comments_by_comments_ids(ids_list=comment_ids)
+    comment_list = [comment for comment in comments]
+    pprint(comment_list)
