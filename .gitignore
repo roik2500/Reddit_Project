@@ -1,4 +1,3 @@
-
 .idea/
 .env
 data
@@ -13,8 +12,10 @@ venv
 /db_utils/document_topic_table_general-20_updated2.csv
 /api_utils/ids.pkl
 
+text_analysis/__pycache__/
 api_utils/__pycache__/
-
+statistics_analysis/__pycache__/
+Classifier/__pycache__/
 text_analysis/client_secrets.json
 
 text_analysis/credentials.json

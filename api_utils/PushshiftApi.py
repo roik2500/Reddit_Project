@@ -96,10 +96,6 @@ class PushshiftApi(object):
         # posts_df.drop(self.posts_columns_to_remove, axis=1, inplace=True)
         # print(posts_df)
         # convert pandas Data frame to Json
-        path = r'/'
-        posts_df.to_json('sampleJsonPosts_35000.json', orient="index")
-        posts_df.to_csv('data_35000_psio.csv')
-        # comments_df.to_json(path + '\sampleJsonComments.json', orient="index")
 
     def get_comments_by_comments_ids(self, ids_list):
         return self.api_pmaw.search_comments(ids=ids_list)  # return generator
