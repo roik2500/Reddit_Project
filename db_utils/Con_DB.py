@@ -1,5 +1,5 @@
 import json
-
+from pprint import pprint
 import pymongo
 import os
 from datasets import tqdm
@@ -12,6 +12,9 @@ from api_utils.PushshiftApi import PushshiftApi
 from api_utils.reddit_api import reddit_api
 import json
 from bson.json_util import dumps
+
+from text_analysis.Parser import Parser
+
 load_dotenv()
 
 '''
@@ -34,10 +37,11 @@ class Con_DB:
         self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB"))
         self.posts_cursor = None
         self.file_reader = FileReader()
-        #self.path = "/home/shouei/wallstreetbets_2020_full_.json"
+        # self.path = "/home/shouei/wallstreetbets_2020_full_.json"
         self.path = os.getenv('DATA_PATH')
         self.pushshift_api = PushshiftApi()
         self.reddit_api = reddit_api()
+        self.parser = Parser()
 
     def setAUTH_DB(self, num):
         self.myclient = pymongo.MongoClient(os.getenv("AUTH_DB{}".format(num)))
@@ -63,6 +67,8 @@ class Con_DB:
         :return: data from mongodb
         '''
         #         db_name = 'local'
+        print("db_name", db_name)
+        print("collection_name", collection_name)
         mydb = self.myclient[db_name]
         self.posts_cursor = mydb[collection_name]
         return self.posts_cursor
@@ -111,7 +117,8 @@ class Con_DB:
 
             if 'replies' in comment["data"] and len(comment['data']['replies']) > 0:
                 replies = comment['data']['replies']['data']['children']
-                item += self.comments_to_dicts(replies, created=created)  # convert replies using the same function item["replies"] =
+                item += self.comments_to_dicts(replies,
+                                               created=created)  # convert replies using the same function item["replies"] =
 
             results += item  # add converted item to results
         return results  # return all converted comments
@@ -128,7 +135,8 @@ class Con_DB:
                     and comment['data']['body'] != "[deleted]":  # we comment text from reddit. Not Removed content
                 text = comment['data']['body']
 
-            elif "body" in comment["data"] and comment['data']['body'] == "[removed]":  # the comment was removed by mods
+            elif "body" in comment["data"] and comment['data'][
+                'body'] == "[removed]":  # the comment was removed by mods
                 text = comment['data']['body']
                 # print('comment_id',  comment['data']['id'])
                 # print('reddit comment content', comment['data']['body'])
@@ -139,16 +147,16 @@ class Con_DB:
                 #     all_user_commnets = self.reddit_api.get_user_commnets(reddit_user_name=comment['data']['author'])
                 #     text = self.reddit_api.get_removed_comment_from_reddit(user_comments=all_user_commnets, removed_comment_id=id)
                 # print('retrived comment from user profile', text)
-
+            text = self.parser.remove_URL(text)
             item = [[text, created, id, link_id, is_removed]]  # create list from comment
 
             if 'replies' in comment["data"] and len(comment['data']['replies']) > 0:
                 replies = comment['data']['replies']['data']['children']
-                item += self.comments_to_lists(replies, created=created, link_id=link_id)  # convert replies using the same function item["replies"] = k4lz6m
+                item += self.comments_to_lists(replies, created=created,
+                                               link_id=link_id)  # convert replies using the same function item["replies"] = k4lz6m
 
             results += item  # add converted item to results
         return results  # return all converted comments
-
 
     def get_text_from_post_OR_comment(self, _object, post_or_comment):
         if post_or_comment == 'post':
@@ -156,9 +164,10 @@ class Con_DB:
             created = _object['reddit_api']['post']['created_utc'][0]
             text = _object['pushift_api']['title']
             is_removed = self.is_removed(_object, "post", "Removed")
-            if "selftext" in _object['pushift_api'].keys() and not _object['pushift_api']["selftext"]== "[removed]"\
+            if "selftext" in _object['pushift_api'].keys() and not _object['pushift_api']["selftext"] == "[removed]" \
                     and _object['pushift_api']["selftext"] != "[deleted]":
                 text = text + " " + _object['pushift_api']["selftext"]
+            text = self.parser.remove_URL(text)
             return [[text, created, id, is_removed]]
 
         elif post_or_comment == 'comment':
@@ -194,27 +203,65 @@ class Con_DB:
             relevent_data.clear()
 
     ''' This function set the self text that was removed from reddit and insert it to the pushsift section'''
+
     def set_removed_comments_in_mongo(self):
         post_id_removed_comments = {}
         self.get_cursor_from_mongodb()
         update_cursor = self.posts_cursor
-        for obj in self.posts_cursor.find({}):
-            post_id_removed_comments[obj['post_id']] = []
-            comments = self.comments_to_lists(obj['reddit_api']['comments'], '2020-01-01', obj['post_id'])
-            for comment in comments:
-                if comment[0] == '[removed]' and comment[-1] == True:
-                    post_id_removed_comments[obj['post_id']].append(comment[2])
-            if len(post_id_removed_comments[obj['post_id']]) == 0:
-                del post_id_removed_comments[obj['post_id']]
-                continue
-            else:
-                ids = post_id_removed_comments[obj['post_id']]
-                pushshift_comments = self.pushshift_api.get_comments_by_comments_ids(ids_list=ids)
-                pushshift_comments = [c for c in pushshift_comments]
-                id_to_comment_body = {}
-                for pushshift_comment in pushshift_comments:
-                    id_to_comment_body[pushshift_comment['id']] = pushshift_comment['body']
-                update_cursor.update_one({"_id": obj['_id']}, {"$set": {"body_removed_comment": id_to_comment_body}})
+        posts_number = 0
+        comment_number = 0
+        # for obj in self.posts_cursor.find({}):
+        #     post_id_removed_comments[obj['post_id']] = []
+        #     comments = self.comments_to_lists(obj['reddit_api']['comments'], '2020-01-01', obj['post_id'])
+        #     for comment in comments:
+        #         if comment[0] == '[removed]' and comment[-1] == True:
+        #             post_id_removed_comments[obj['post_id']].append(comment[2])
+        #     if len(post_id_removed_comments[obj['post_id']]) == 0:
+        #         del post_id_removed_comments[obj['post_id']]
+        #         continue
+        #     else:
+        #         ids = post_id_removed_comments[obj['post_id']]
+        #         try:
+        #             pushshift_comments = self.pushshift_api.get_comments_by_comments_ids(ids_list=ids)
+        #         except:
+        #             continue
+        #         pushshift_comments = [c for c in pushshift_comments]
+        #         id_to_comment_body = {}
+        #         for pushshift_comment in pushshift_comments:
+        #             id_to_comment_body[pushshift_comment['id']] = pushshift_comment['body']
+        #         posts_number += 1
+        #         print("posts_number", posts_number)
+        #         comment_number += len(pushshift_comments)
+        #         print("comment_number", comment_number)
+        #         update_cursor.update_one({"_id": obj['_id']}, {"$set": {"body_removed_comment": id_to_comment_body}})
+        removed_comments_iter = self.posts_cursor.find({"data.body": "[removed]"})
+        removed_comments_ids_from_pushshift = [c['data']['id'] for c in removed_comments_iter]
+        pushshift_comments = self.pushshift_api.get_comments_by_comments_ids(ids_list=removed_comments_ids_from_pushshift)
+        pushshift_comments = [(c['id'], c['body']) for c in pushshift_comments if c['body'] != '[removed]']
+        for comment_id, comment_body in pushshift_comments:
+        # post_id_removed_comments[obj['post_id']] = []
+        # comments = self.comments_to_lists(obj['reddit_api']['comments'], '2020-01-01', obj['post_id'])
+        # for comment in comments:
+        #     if comment[0] == '[removed]' and comment[-1] == True:
+        #         post_id_removed_comments[obj['post_id']].append(comment[2])
+        # if len(post_id_removed_comments[obj['post_id']]) == 0:
+        #     del post_id_removed_comments[obj['post_id']]
+        #     continue
+        # else:
+        #     ids = post_id_removed_comments[obj['post_id']]
+        #     try:
+        #         pushshift_comments = self.pushshift_api.get_comments_by_comments_ids(ids_list=ids)
+        #     except:
+        #         continue
+        #     pushshift_comments = [c for c in pushshift_comments]
+        #     id_to_comment_body = {}
+        #     for pushshift_comment in pushshift_comments:
+        #         id_to_comment_body[pushshift_comment['id']] = pushshift_comment['body']
+        #     posts_number += 1
+            # print("posts_number", posts_number)
+            comment_number += 1
+            # print("comment_number", comment_number)
+            update_cursor.update_one({"data.id": comment_id}, {"$set": {"data.pushshift_body": comment_body}})
 
     def chose_relevant_data(self, collection_name):
         posts_cursor = self.get_cursor_from_mongodb(collection_name=collection_name)
@@ -238,9 +285,9 @@ class Con_DB:
             else:
                 self.add_filed(data='reddit_api')
 
-    #def get_specific_items_by_post_ids(self, ids_list, post_or_comment_arg):
+    # def get_specific_items_by_post_ids(self, ids_list, post_or_comment_arg):
     #    # file_reader_new = FileReader()
-        # data_cursor = file_reader_new.get_json_iterator(self.path)
+    # data_cursor = file_reader_new.get_json_iterator(self.path)
     #    data_cursor = self.posts_cursor.find(
     #       {u'pushift_api.id': {'$in': ids_list}}
     #    )
@@ -262,15 +309,16 @@ class Con_DB:
             # db_name = 'local'
             # mydb = self.myclient[db_name]
             # posts_cursor = mydb[os.getenv("COLLECTION_NAME")]
-            #posts_cursor = self.posts_cursor
+            # posts_cursor = self.posts_cursor
             # data_cursor = file_reader_new.get_json_iterator(self.path)
             data_cursor = self.posts_cursor.find(
-               {u'post_id': {'$in': ids_list}}
+                {u'post_id': {'$in': ids_list}}
             )
             text_and_date_list = []
             for item in data_cursor:
                 if item['post_id'] in ids_list:
-                    text_and_date_list.append(self.get_text_from_post_OR_comment(item, post_or_comment=post_or_comment_arg))
+                    text_and_date_list.append(
+                        self.get_text_from_post_OR_comment(item, post_or_comment=post_or_comment_arg))
         else:
             text_and_date_list = []
             pushshift_comments = self.pushshift_api.get_comments_by_comments_ids(ids_list)
@@ -301,7 +349,8 @@ class Con_DB:
             text_and_date_list = []
             for item in data_cursor:
                 if item['post_id'] in ids_list:
-                    text_and_date_list.append(self.get_text_from_post_OR_comment(item, post_or_comment=post_or_comment_arg))
+                    text_and_date_list.append(
+                        self.get_text_from_post_OR_comment(item, post_or_comment=post_or_comment_arg))
         else:
             text_and_date_list = []
             pushshift_comments = self.pushshift_api.get_comments_by_comments_ids(ids_list)
@@ -384,6 +433,7 @@ class Con_DB:
     :argument path_to_save_json - full path of directory of saving the json file 
     :argument collection_name - the name of collection(must be exactly the same name that wrote in MongoDB)
     '''
+
     def fromCSVtoJSON(self, path_to_csv, path_to_save_json, collection_name):
         topic_csv = self.read_fromCSV(path_to_csv)
         posts = self.get_cursor_from_mongodb(collection_name=collection_name)
@@ -408,18 +458,50 @@ class Con_DB:
             for NER, v in val.items():
                 cursor = self.get_cursor_from_mongodb()
                 NER_TYPE = NER + "_" + v[0][0]
-                post_from_mongo = self.get_full_data_by_object_ids_from_mongodb(ids_list=v[1][1], post_or_comment_arg='post',
+                post_from_mongo = self.get_full_data_by_object_ids_from_mongodb(ids_list=v[1][1],
+                                                                                post_or_comment_arg='post',
                                                                                 NER_TYPE=NER_TYPE)
-                NER_POSTS_FOLDER=''
+                NER_POSTS_FOLDER = ''
                 path = NER_POSTS_FOLDER + "NER_posts\\Posts_full"
                 file_name = NER_TYPE + ".json"
-                self.file_reader.write_dict_to_json(path=path,file_name=file_name, dict_to_write=post_from_mongo)
+                self.file_reader.write_dict_to_json(path=path, file_name=file_name, dict_to_write=post_from_mongo)
 
     def get_NER_full_post_data(self, NER_TYPE):
         path = os.getenv('NER_POSTS_FOLDER') + NER_TYPE
         return self.file_reader.read_from_json_to_dict(PATH=path)
 
+    def count_retrived_removed_comments(self):
+        self.get_cursor_from_mongodb()
+        iterr = self.posts_cursor.find({})
+        posts_counter = 0
+        comments_counter = 0
+        body_not_removed = 0
+        removed_posts_comments_ids = {}
+        for obj in iterr:
+            if 'body_removed_comment' in obj.keys():
+                for id, comment_body in obj['body_removed_comment'].items():
+                    if comment_body != '[removed]':
+                        if obj['post_id'] in removed_posts_comments_ids.keys():
+                            removed_posts_comments_ids[obj['post_id']].append(id)
+                        else:
+                            removed_posts_comments_ids[obj['post_id']] = [id]
+                        body_not_removed += 1
+                posts_counter += 1
+                comments_counter += len(obj['body_removed_comment'])
+        print("posts_counter", posts_counter)
+        print("comments_counter", comments_counter)
+        print("body_not_removed", body_not_removed)
+        print("posts_that_have_body_not_removed", len(removed_posts_comments_ids.keys()))
+        pprint(removed_posts_comments_ids)
+
+
 con_db = Con_DB()
+con_db.get_cursor_from_mongodb()
+# a = con_db.posts_cursor.find({"post_id": {"$gt": "es8vrt"}})
+# print(a)
+# b = [A for A in a]
+# print(b)
+# con_db.count_retrived_removed_comments()
 con_db.set_removed_comments_in_mongo()
 # cursor = con_db.get_cursor_from_mongodb()
 # data = con_db.get_specific_items_by_object_ids(ids_list=['eici5m'], post_or_comment_arg='post')

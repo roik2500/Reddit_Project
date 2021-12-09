@@ -43,9 +43,9 @@ def explore_data_with_NER_and_emotion(n, path_to_read_data, collection_name, pat
     NER_emotion_df = get_emotion_to_NER(Con_DB, NER_BY_Type, NER_emotion_df, category, collection_name,
                                         path_to_save_plots, post_or_comment_arg)
     # example name of file - "Removed_NER_emotion_rate_mean_wallstreetbets.csv"
-    File = "{}_NER_emotion_rate_mean_{}_{}_NERS.csv".format(category, collection_name,n)
-    file_reader.write_to_csv(df_to_write=NER_emotion_df, path=resource_path,
-                             file_name=File)
+    # File = "{}_NER_emotion_rate_mean_{}_{}_NERS.csv".format(category, collection_name,n)
+    # file_reader.write_to_csv(df_to_write=NER_emotion_df, path=resource_path,
+    #                          file_name=File)
 
 
 def get_emotion_to_NER(Con_DB, NER_BY_Type, NER_emotion_df, category, collection_name, path_to_save_plots,
@@ -56,6 +56,8 @@ def get_emotion_to_NER(Con_DB, NER_BY_Type, NER_emotion_df, category, collection
         if not os.path.exists(new_file):
             os.makedirs(new_file)
         for NER_item, posts_ids_list in NER_BY_Type[type_item].items():
+            if len(posts_ids_list[1]) > 1000:
+                continue
             posts_ids_set = set(posts_ids_list[1])
             # relevant_posts = Con_DB.get_NER_full_post_data(NER_TYPE=NER_item+"_"+type_item)
             # relevant_posts = Con_DB.get_specific_items_by_object_ids(ids_list=list(posts_ids_set), post_or_comment_arg=post_or_comment_arg)
@@ -252,7 +254,7 @@ if __name__ == '__main__':
     PATH_DRIVE_EMOTION_DETECTION = create_new_folder_drive(path=os.getenv("OUTPUTS_DIR"), new_folder='emotion_detection/wallstreetbets')
     PATH_DRIVE_POSTS = create_new_folder_drive(path=PATH_DRIVE_EMOTION_DETECTION, new_folder='posts')
 
-    data_cursor = con_db.get_cursor_from_mongodb(db_name='local', collection_name=COLLECTION_NAME) # .find({}).limit(30000)
+    data_cursor = con_db.get_cursor_from_mongodb(db_name='reddit', collection_name=COLLECTION_NAME).find({}) #.limit(30000)
 
     ''' CREATE FOLDERS IF NEEDED'''
     resource_path = create_new_folder_drive(PATH_DRIVE_POSTS, 'resources/')
@@ -275,15 +277,15 @@ if __name__ == '__main__':
     #
     print("start Removed")
     print("1")
-    # emotion_detection_removed.get_plot_and_emotion_rate_from_all_posts_in_category(data_cursor=data_cursor,
-    #                                                                        Con_DB=con_db,
-    #                                                                        path_to_save_plt=removed_plots_folder_path,
-    #                                                                        category="Removed",
-    #                                                                        resources=removed_resource_path,
-    #                                                                        subreddit_name=COLLECTION_NAME,
-    #                                                                        file_reader=file_reader,
-    #                                                                        post_need_to_extract=True,
-    #                                                                        post_or_comment_arg='post')
+    emotion_detection_removed.get_plot_and_emotion_rate_from_all_posts_in_category(data_cursor=data_cursor,
+                                                                           Con_DB=con_db,
+                                                                           path_to_save_plt=removed_plots_folder_path,
+                                                                           category="Removed",
+                                                                           resources=removed_resource_path,
+                                                                           subreddit_name=COLLECTION_NAME,
+                                                                           file_reader=file_reader,
+                                                                           post_need_to_extract=True,
+                                                                           post_or_comment_arg='post')
 
     # print("2")
     # name_entity_removed.extract_NER_from_data(posts=data_cursor, con_db=con_db,
@@ -350,11 +352,11 @@ if __name__ == '__main__':
     #                                                                        post_or_comment_arg='post')
     #
     print("2")
-    # emotion_detection_not_removed = None
-    # name_entity_not_removed.extract_NER_from_data(posts=data_cursor, con_db=con_db,
-    #                                              file_name_to_save='NotRemoved_{}_title_selftext_NER.csv'.format(COLLECTION_NAME),
-    #                                              path_to_folder=not_removed_resource_path, category='NotRemoved',
-    #                                              is_removed_bool=False, post_or_comment_arg='post')
+    emotion_detection_not_removed = None
+    name_entity_not_removed.extract_NER_from_data(posts=data_cursor, con_db=con_db,
+                                                 file_name_to_save='NotRemoved_{}_title_selftext_NER.csv'.format(COLLECTION_NAME),
+                                                 path_to_folder=not_removed_resource_path, category='NotRemoved',
+                                                 is_removed_bool=False, post_or_comment_arg='post')
 
     print("3")
     path = not_removed_resource_path + 'NotRemoved_{}_title_selftext_NER.csv'.format(COLLECTION_NAME)

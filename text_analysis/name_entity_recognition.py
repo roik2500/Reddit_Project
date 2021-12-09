@@ -13,6 +13,7 @@ from text_analysis.emotion_detection import EmotionDetection
 from pprint import pprint
 
 load_dotenv()
+spacy.prefer_gpu()
 
 
 class NameEntity:
@@ -23,7 +24,7 @@ class NameEntity:
         self.NER_per_month = {}
 
     def get_entites(self, raw_text):
-        text = self.NER(raw_text)
+        text = self.NER(raw_text, disable=["tagger", "parser", "attribute_ruler", "lemmatizer"])
         return [(word.text, word.label_) for word in text.ents]
 
     def help_get_NER_types(self):
