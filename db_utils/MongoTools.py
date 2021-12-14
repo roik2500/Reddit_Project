@@ -14,6 +14,7 @@ from pymongo import WriteConcern
 from pymongo.errors import BulkWriteError
 from tqdm import tqdm
 
+
 # # good_fields = ["can_mod_post",
 # # "is_crosspostable",
 # # "is_original_content",
@@ -30,9 +31,6 @@ from tqdm import tqdm
 # # bed_fields.remove('}],\n')
 # #
 #
-client = pymongo.MongoClient(
-    'mongodb://132.72.66.126:27017/?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl=false')
-db = client["reddit"]
 
 
 #
@@ -49,6 +47,19 @@ db = client["reddit"]
 #     colc_comments.insert_many([y for x in tqdm(curs) for y in x["reddit_api"]["comments"]])
 #     colc.update_many({}, {"$unset": {"reddit_api.comments": ""}})
 #
+
+
+def remove_fields(collection, filter_fields_path):
+    fields = []
+    with open(filter_fields_path) as f:
+        line = f.readline()
+        while line:
+            fields.append(line.split('":')[0].strip(' "').strip("\n"))
+            line = f.readline()
+    for field in fields:
+        collection.update_many({}, {"$unset": {"data.{}".format(field): 1}})
+
+
 def remove_dup(collection_name):
     colc = db[collection_name]
     curs = colc.find({}, {"data.id": 1}, no_cursor_timeout=True)
@@ -101,31 +112,39 @@ def comments_to_lists(comments, link_id):  # link_id = post_id
     return results  # return all converted comments
 
 
-for collection_name in db.list_collection_names():
-    if collection_name.__contains__("comments"):
-        print(collection_name)
-        colc = db[collection_name].with_options(write_concern=WriteConcern(w=0))
-        replies_lst = []
-        curs = colc.find({"data.replies": {"$ne": ""}})
-        replies_lst = []
-        counter = 0
-        for x in tqdm(curs):
-            if "replies" in x["data"].keys():
-                comments = comments_to_lists(x["data"]["replies"]["data"]["children"], x["data"]["id"])
-                print(counter, x["data"]["id"])
-                replies_lst.extend(comments)
-                counter += 1
-            if counter == 100000:
-                print("writing!")
-                colc.insert_many(replies_lst)
-                replies_lst = []
-                counter = 0
-        if counter > 0:
-            print("last writing!")
-            colc.insert_many(replies_lst)
+def extract_nested_replies(collection_curs):
+    curs = collection_curs.find({"data.replies": {"$ne": ""}})
+    replies_lst = []
+    counter = 0
+    for x in tqdm(curs):
+        if "replies" in x["data"].keys():
+            comments = comments_to_lists(x["data"]["replies"]["data"]["children"], x["data"]["id"])
+            print(counter, x["data"]["id"])
+            replies_lst.extend(comments)
+            counter += 1
+        if counter == 100000:
+            print("writing!")
+            collection_curs.insert_many(replies_lst)
             replies_lst = []
             counter = 0
-# remove_dup("cryptocurrency_comments")
+    if counter > 0:
+        print("last writing!")
+        collection_curs.insert_many(replies_lst)
+
+
+if __name__ == "__main__":
+    client = pymongo.MongoClient(
+        'mongodb://132.72.66.126:27017/?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl'
+        '=false')
+    db = client["reddit"]
+    for collection_name in tqdm(db.list_collection_names()):
+        if collection_name.__contains__("comments"):
+            print(collection_name)
+            colc = db[collection_name]#.with_options(write_concern=WriteConcern(w=0))
+            remove_fields(colc, r"G:\.shortcut-targets-by-id\1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d\final_project\outputs"
+                                r"\filter_comments.txt")
+            # extract_nested_replies(colc)
+# re        move_dup("cryptocurrency_comments")
 
 #     if "replies" in x["data"].keys():
 #         replies_lst.append(x)
