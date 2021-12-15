@@ -47,6 +47,24 @@ from tqdm import tqdm
 #     colc_comments.insert_many([y for x in tqdm(curs) for y in x["reddit_api"]["comments"]])
 #     colc.update_many({}, {"$unset": {"reddit_api.comments": ""}})
 #
+def counting_replies(replies_lst):
+    cnt = 0
+    for rep in replies_lst:
+        cnt += 1
+        if "replies" in rep["data"] and 'data' in rep["data"]["replies"]:
+            cnt += counting_replies(rep["data"]["replies"]["data"]["children"])
+    return cnt
+
+
+def extract_top_level_comments(collection, comments_collection):
+    curs = collection.find({}, {"reddit_api.comments": 1})
+    tmp_res = []
+    for post in curs:
+        comments = [com for com in post["reddit_api"]["comments"]]
+        tmp_res.extend(comments)
+        if len(tmp_res) > 30000:
+            comments_collection.insert_many(tmp_res)
+            tmp_res = []
 
 
 def remove_fields(collection, filter_fields_path):
@@ -56,8 +74,7 @@ def remove_fields(collection, filter_fields_path):
         while line:
             fields.append(line.split('":')[0].strip(' "').strip("\n"))
             line = f.readline()
-    for field in fields:
-        collection.update_many({}, {"$unset": {"data.{}".format(field): 1}})
+    collection.update_many({}, {"$unset": {f"data.{field}": "" for field in fields}})
 
 
 def remove_dup(collection_name):
@@ -137,13 +154,25 @@ if __name__ == "__main__":
         'mongodb://132.72.66.126:27017/?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl'
         '=false')
     db = client["reddit"]
-    for collection_name in tqdm(db.list_collection_names()):
-        if collection_name.__contains__("comments"):
-            print(collection_name)
-            colc = db[collection_name]#.with_options(write_concern=WriteConcern(w=0))
-            remove_fields(colc, r"G:\.shortcut-targets-by-id\1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d\final_project\outputs"
-                                r"\filter_comments.txt")
-            # extract_nested_replies(colc)
+    #    for collection_name in tqdm(db.list_collection_names()):
+    #        if collection_name.__contains__("comments") and collection_name not in {"mensrights_comments","cryptocurrency_comments","wallstreetbets_comments"}:
+    #            print(collection_name)
+    #            colc = db[collection_name] #.with_options(write_concern=WriteConcern(w=0))
+    #            remove_fields(colc, r""
+    #                                r"filter_comments.txt")
+    #    colc = db["WSB"]
+    #    comments_colc = db["WSB_comments"]
+    #    extract_top_level_comments(colc, comments_colc)
+
+    colc = db["WSB_comments"]
+    curs = colc.find({"data.link_id":"t3_eick65"})
+    total_cnt = 0
+    for com in tqdm(curs):
+        total_cnt += 1
+        if "replies" in com["data"] and "data" in com["data"]["replies"]:
+            total_cnt += counting_replies(com["data"]["replies"]["data"]["children"])
+    print(total_cnt)
+    # extract_nested_replies(colc)
 # re        move_dup("cryptocurrency_comments")
 
 #     if "replies" in x["data"].keys():
