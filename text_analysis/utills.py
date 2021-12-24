@@ -1,3 +1,4 @@
+import pandas as pd
 from gensim import corpora
 from gensim.models import TfidfModel
 from spacy.lang.en import English
@@ -6,6 +7,7 @@ from nltk.corpus import wordnet as wn
 from nltk.stem.wordnet import WordNetLemmatizer
 import pickle
 import pathlib
+from matplotlib import pyplot as plt
 
 
 def get_lemma(word):
@@ -74,3 +76,24 @@ def dump_prepared_data_files(directory, text_data):
     corpus_tfidf = tfidf[corpus]
     pickle.dump(corpus, open('{}/corpus.pkl'.format(directory), 'wb'))
     pickle.dump(corpus_tfidf, open('{}/corpus_tfidf.pkl'.format(directory), 'wb'))
+
+
+def export_plots(path):
+    df = pd.read_csv(path)
+    # fig, axs = plt.subplots(2, 2, figsize=(5,3))
+    agg_df = df.groupby("topic").mean()
+    del agg_df["Unnamed: 0"]
+    del agg_df["Unnamed: 0.1"]
+    del agg_df["ID"]
+    agg_df_1 = agg_df.iloc[:, :7]
+    agg_df_2 = agg_df.iloc[:, 7:10]
+    agg_df_3 = agg_df.iloc[:, 10:]
+    # for i, col in enumerate(agg_df):
+    #     axs[i].plot(agg_df[col])
+    agg_df_1.plot()
+    agg_df_2.plot()
+    agg_df_3.plot()
+    plt.show()
+
+
+export_plots(r"C:\Users\shimon\Downloads\politics_finalData (1).csv")
