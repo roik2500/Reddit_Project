@@ -13,7 +13,6 @@ from dateutil.relativedelta import relativedelta
 
 colors = ['tab:red', 'tab:blue', 'tab:green', 'tab:orange', 'tab:brown', 'tab:grey', 'tab:pink', 'tab:olive']
 
-
 # colors = [color for name, color in mcolors.XKCD_COLORS.items()]  # more colors: 'mcolors.XKCD_COLORS'
 
 from matplotlib.backends.backend_pdf import PdfPages
@@ -297,13 +296,17 @@ def ner_qnty_plot(posts_file_path):
     # fig, axes = plt.subplots(nrows=5, ncols=2)
     # df = df.drop(df[df["Topic"] == -1].index)
     # df["month"] = df["created_date"].apply(lambda x: x.split("-")[1])
-    time_line_df = pd.DataFrame([(datetime.date(2020, 1, 3), "Soleimani elimination"),
-                                 (datetime.date(2020, 3, 13), "Covid-19 - National emergency"),
-                                 (datetime.date(2020, 4, 9), "Sanders Drops Out"),
-                                 (datetime.date(2020, 5, 26), "Protests following George Floyd death"),
-                                 (datetime.date(2020, 11, 3), "Joe Biden won the elections")],
+    time_line_df = pd.DataFrame([(datetime.date(2020, 1, 3), "Soleimani \\nelimination"),
+                                 (datetime.date(2020, 3, 13), "Covid-19 \\nNational emergency"),
+                                 (datetime.date(2020, 4, 9), "Bernie Sanders \\nDrops Out"),
+                                 (datetime.date(2020, 5, 26), 'Protests following \\nGeorge Floyd death'),
+                                 (datetime.date(2020, 9, 29), 'First \\nPresidential \\nDebate'),
+                                 (datetime.date(2020, 10, 22), 'Third \\nPresidential \\nDebate'),
+                                 (datetime.date(2020, 11, 3), 'Election \\nDay'),
+                                 ],
                                 columns=["date", "event"])
-    time_line_df["date"] = time_line_df["date"].apply(lambda x: x.isocalendar()[1])
+    time_line_df["date"] = pd.to_datetime(time_line_df["date"])
+    # time_line_df["date"] = time_line_df["date"].apply(lambda x: x.isocalendar()[1])
 
     ind = read_json("C:/Users/shimon/PycharmProjects/Reddit_Project/text_analysis/top_inverted_index")
     # unique_dates = range(1, 13)
@@ -356,14 +359,15 @@ def ner_qnty_plot(posts_file_path):
         months = final_df["created_date"].values.tolist()
         entities.remove("created_date")
         final_df_viz = pd.DataFrame([[ww for i, ww in final_df["created_date"].iteritems() for w in entities],
-                                     len(unique_dates)*entities,
+                                     len(unique_dates) * entities,
                                      final_df[entities].to_numpy().flatten().tolist(),
                                      [ww for ww in months for w in entities]],
                                     index=["created_date", "entity", "count", "month num"]).transpose()
         selection = alt.selection_multi(fields=entities, bind='legend')
 
         chart = alt.Chart(final_df_viz, title=f"{k} volume in 2020").mark_area().encode(
-            alt.X("week(created_date):T", axis=alt.Axis(domain=False, tickSize=0, tickCount=12), title="Date"),
+            alt.X("week(created_date):T",
+                  axis=alt.Axis(domain=False, tickSize=0), title="Date"),
             alt.Y('sum(count):Q', stack='center', axis=None, title="Posts count"),
             alt.Color('entity:N'),
             opacity=alt.condition(selection, alt.value(1), alt.value(0.2))
@@ -376,26 +380,36 @@ def ner_qnty_plot(posts_file_path):
             titleFontSize=14,
 
         )
-        # altair_viewer.show(chart)
-        st.altair_chart(chart)
+        rules = alt.Chart(time_line_df).mark_rule().encode(
+            x='week(date):T',
+            size=alt.value(1)
+        )
+        text = alt.Chart(time_line_df).mark_text(align='center', dy=-200, fontSize=10, fontWeight=100, opacity=0.7, lineBreak=r'\n'
+        ).encode(
+            x='week(date):T',
+            text='event'
+        )
+        chart = chart+rules+text
+        chart.save(f"{k}.html")
+        # st.altair_chart(chart)
         # charts.append(chart)
     # altair_viewer.display(charts)        #
-        # final_df.plot.area(x="created_date", xlabel="week num", ylabel="quantity", stacked=True, color=colors, title=k,
-        #                    alpha=0.8)
-        # # plt.bar_label(axes.containers[-1], labels=time_line_df["event"])
-        # # Lighten borders
-        # ax = plt.gca()
-        #
-        # for date_point, label in time_line_df.values.tolist():
-        #     plt.axvline(x=date_point)
-        #     plt.text(date_point, ax.get_ylim()[1] - 4, label,
-        #              horizontalalignment='center',
-        #              verticalalignment='center', fontdict=dict(size=7),
-        #              bbox=dict(facecolor='white', alpha=0.5))
-        # plt.gca().spines["top"].set_alpha(0)
-        # plt.gca().spines["bottom"].set_alpha(.3)
-        # plt.gca().spines["right"].set_alpha(0)
-        # plt.gca().spines["left"].set_alpha(.3)
+    # final_df.plot.area(x="created_date", xlabel="week num", ylabel="quantity", stacked=True, color=colors, title=k,
+    #                    alpha=0.8)
+    # # plt.bar_label(axes.containers[-1], labels=time_line_df["event"])
+    # # Lighten borders
+    # ax = plt.gca()
+    #
+    # for date_point, label in time_line_df.values.tolist():
+    #     plt.axvline(x=date_point)
+    #     plt.text(date_point, ax.get_ylim()[1] - 4, label,
+    #              horizontalalignment='center',
+    #              verticalalignment='center', fontdict=dict(size=7),
+    #              bbox=dict(facecolor='white', alpha=0.5))
+    # plt.gca().spines["top"].set_alpha(0)
+    # plt.gca().spines["bottom"].set_alpha(.3)
+    # plt.gca().spines["right"].set_alpha(0)
+    # plt.gca().spines["left"].set_alpha(.3)
     # plt.show()
 
 
@@ -454,5 +468,5 @@ def read_json(file_name):
 # ner_inverted_index(r"data_with_time.csv")
 # r = read_json("inverted_index")
 # print("--")
-ner_top(2000)
+ner_top(4000)
 ner_qnty_plot(r"C:\Users\shimon\PycharmProjects\Reddit_Project\text_analysis\data_with_time.csv")
