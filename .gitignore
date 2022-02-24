@@ -27,3 +27,5 @@ requirements.txt
 db_utils/__pycache__/
 
 db_utils/outFileReader.py
+
+text_analysis/resources/
