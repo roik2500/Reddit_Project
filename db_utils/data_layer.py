@@ -10,9 +10,13 @@ class DataLayer:
         self.client = pymongo.MongoClient(connection_string)
         self.logger = logging.getLogger("DataLayer")
 
-    def get_collection_cursor(self, year, collection_name, submission_kind, fields_list=None):
+    def get_collection(self, year, collection_name, submission_kind):
         db = self.client[f"reddit_{year}"].with_options(write_concern=pymongo.WriteConcern(w=0))
         collection = db[f"{collection_name}_{submission_kind}"]
+        return collection
+
+    def get_collection_cursor(self, year, collection_name, submission_kind, fields_list=None):
+        collection = self.get_collection(self, year, collection_name, submission_kind)
         return collection.find({}, {field: 1 for field in fields_list})
 
     @staticmethod
@@ -40,6 +44,7 @@ class DataLayer:
             return ''
 
     def get_selftext(self, sub_kind, submission):
+        sub_submission = ''
         if sub_kind == 'post':
             selftext = "selftext"
         else:
@@ -50,6 +55,7 @@ class DataLayer:
             else:
                 self.logger.warning(
                     f"{self.get_post_id(submission)} has the same text in pushift and reddit")
+                sub_submission = submission["reddit_api"]
         else:
             self.logger.warning(
                 f"{self.get_post_id(submission)} does not contains pushift_api field. you got reddit_api selftext")
