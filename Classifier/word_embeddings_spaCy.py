@@ -3,6 +3,8 @@ import spacy
 import statistics
 import numpy as np
 
+spacy.prefer_gpu()
+
 class WordEmbedding:
 
     def __init__(self):

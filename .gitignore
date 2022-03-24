@@ -35,6 +35,5 @@ db_utils/outFileReader.py
 text_analysis/resources/
 api_utils/cache/
 *.json
-*.json
 api_utils/cache/
 text_analysis/resources/

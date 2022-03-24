@@ -10,8 +10,7 @@ import matplotlib.pyplot as plt
 
 from decimal import Decimal
 from tqdm import tqdm
-# import torch
-# torch.cuda.is_available()
+
 # from transformers import BertTokenizer
 # from transformers import pipeline
 from pprint import pprint
@@ -30,20 +29,21 @@ import numpy as np
 
 from db_utils.FileReader import FileReader
 
+import torch
+
 # from pysentimiento import EmotionAnalyzer
 
-'''@misc{perez2021pysentimiento,
-      title={pysentimiento: A Python Toolkit for Sentiment Analysis and SocialNLP tasks},
-      author={Juan Manuel Pérez and Juan Carlos Giudici and Franco Luque},
-      year={2021},
-      eprint={2106.09462},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
-  link - https://huggingface.co/finiteautomata/bertweet-base-emotion-analysis
-}'''
+'''
+@inproceedings{demszky2020goemotions,
+ author = {Demszky, Dorottya and Movshovitz-Attias, Dana and Ko, Jeongwoo and Cowen, Alan and Nemade, Gaurav and Ravi, Sujith},
+ booktitle = {58th Annual Meeting of the Association for Computational Linguistics (ACL)},
+ title = {{GoEmotions: A Dataset of Fine-Grained Emotions}},
+ year = {2020}
+}
+'''
 
 load_dotenv()
-
+torch.cuda.is_available()
 '''
 [[{'label': 'admiration', 'score': 0.00017094481154344976},
   {'label': 'amusement', 'score': 2.571632830949966e-05},
@@ -146,14 +146,14 @@ class EmotionDetection:
         self.emotion_analyzer = MultiLabelPipeline(
             model=model,
             tokenizer=tokenizer,
-            threshold=0.3
+            threshold=0.1
         )
         # model_name = "monologg/bert-base-cased-goemotions-ekman"
         # self.emotion_analyzer = pipeline("text-classification", model=model_name, return_all_scores=True)
 
     def extract_posts_emotion_rate(self, posts, con_DB, post_need_to_extract, category,
                                    post_or_comment_arg):  # posts format: [title + selftext, date, id]
-        # self.emotion_dict = {}
+        self.emotion_dict = {}
         for post in tqdm(posts):
             if post_need_to_extract:
                 items = con_DB.get_text_from_post_OR_comment(_object=post, post_or_comment=post_or_comment_arg)
@@ -264,11 +264,11 @@ class EmotionDetection:
             labels_socres_dict = dict(zip(obj['labels'], obj['scores']))
             # [temp_dict_rate[label].append(score) for label, score in labels_socres_dict.items() if score != []]
             for label, score in labels_socres_dict.items():
-                if score != []:
-                    if label in temp_dict_rate.keys():
-                        temp_dict_rate[label].append(score[0])
-                    else:
-                        temp_dict_rate[label] = score
+                # if score != []:
+                if label in temp_dict_rate.keys():
+                    temp_dict_rate[label].append(score)
+                else:
+                    temp_dict_rate[label] = [score]
             # temp_dict_rate.update(dict(zip(obj['labels'], [obj['scores']])))
         #     for index_label in range(len(obj['labels'])):
         #         emotion_type = obj['labels'][index_label]
@@ -337,7 +337,7 @@ class EmotionDetection:
         # if re.match("^[A-Za-z0-9_-]*$", NER):
         plt.savefig(path_to_save_plt + '_' + NER + '_' + datetime.now().strftime("%H-%M-%S") + ".jpg",
                     transparent=True)
-        # plt.show()
+        plt.show()
         plt.clf()
 
     # date_format  = '%Y/%m' or  "%Y-%m-%d"
@@ -378,7 +378,7 @@ class EmotionDetection:
         plt.legend()
         plt.savefig(path_to_save_plt + '_' + subreddit_name + '_' + category +
                     '_' + datetime.now().strftime("%H-%M-%S") + ".jpg", transparent=True)
-        plt.show()
+        # plt.show()
 
     '''This method plot graph per emotion(like Fear) for one NER'''
 
@@ -517,13 +517,12 @@ if __name__ == '__main__':
     con_db = Con_DB()
     file_reader = FileReader()
     COLLECTION_NAME = os.getenv("COLLECTION_NAME")
-    data_cursor = con_db.get_cursor_from_mongodb(db_name='local',
-                                                 collection_name=COLLECTION_NAME)  # .find({}).limit(30000)
+    data_cursor = con_db.get_cursor_from_mongodb(db_name='reddit', collection_name=COLLECTION_NAME).find({})
     removed_plots_folder_path = "C:\\Users\\User\\Documents\\FourthYear\\Project"
     emotion_detection_removed.get_plot_and_emotion_rate_from_all_posts_in_category(data_cursor=data_cursor,
                                                                                    Con_DB=con_db,
                                                                                    path_to_save_plt=removed_plots_folder_path,
-                                                                                   category="Removed",
+                                                                                   category="All",
                                                                                    resources='',
                                                                                    subreddit_name=COLLECTION_NAME,
                                                                                    file_reader=file_reader,
