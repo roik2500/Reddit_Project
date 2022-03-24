@@ -31,3 +31,9 @@ requirements.txt
 db_utils/__pycache__/
 
 db_utils/outFileReader.py
+
+api_utils/cache/
+
+*.json
+
+text_analysis/resources/
