@@ -188,14 +188,38 @@ def extract_time_from_mongo(posts_file_path, collection_curs):
     time_series = pd.DataFrame(time_series)
     time_series.columns = ["post_id", "created_date"]
     df = pd.merge(df, time_series, how="inner", left_on="post_id", right_on="post_id")
-    df.to_csv(r"G:\.shortcut-targets-by-id\1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d\final_project\BertTopic\data for bert\politics\model\model_15_300_0.6844\data_with_time.csv")
+    df.to_csv(
+        r"G:\.shortcut-targets-by-id\1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d\final_project\BertTopic\data for bert\politics\model\model_15_300_0.6844\data_with_time.csv")
+
+
+def add_status(db_cursor, collection_name):
+    for p in tqdm(db_cursor[collection_name].find({})):
+        status = ''
+        id_ = p["id_"]
+        reddit_post = p["reddit_api"]["post"].lower()
+        pushift_post = p["pushift_api"].lower()
+        if not reddit_post["is_robot_indexable"]:
+            if reddit_post["removed_by_category"] == "automod_filtered":
+                status = "automod_filtered"
+            elif reddit_post["selftext"] == "[removed]":
+                status = "removed"
+            elif reddit_post["selftext"].__contains__("[removed]") and reddit_post["selftext"].__contains__("poll"):
+                status = "poll"
+            elif reddit_post["selftext"] == "[deleted]":
+                status = "deleted"
+            else:
+                status = "shadow_ban"
+        else:
+            status = "exist"
+        db_cursor[collection_name].update({"_id": id_}, {"$set": {"status": status}})
+
 
 if __name__ == "__main__":
     client = pymongo.MongoClient(
         'mongodb://132.72.66.126:27017/?readPreference=primary&appname=MongoDB%20Compass&directConnection=true&ssl'
         '=false')
     db = client["reddit"]
-    extract_time_from_mongo(r"G:\.shortcut-targets-by-id\1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d\final_project\BertTopic\data for bert\politics\model\model_15_300_0.6844\finalData_with_probas.csv", db["politics"])
+    # extract_time_from_mongo(r"G:\.shortcut-targets-by-id\1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d\final_project\BertTopic\data for bert\politics\model\model_15_300_0.6844\finalData_with_probas.csv", db["politics"])
     #   curs = collection.find({}, {"reddit_api.comments": 1})
     # with open(r"G:\.shortcut-targets-by-id\1Zr_v9ggL0ZP7j6DJeTQggwxX7BPmEJ-d\final_project\data\MensRights_2020_.json", 'rb') as f:
     #     items = ijson.items(f, 'item')
