@@ -1,5 +1,6 @@
 import json
 
+import ijson
 import pymongo
 import os
 from datasets import tqdm
@@ -51,9 +52,12 @@ class Con_DB:
             "T")
         return time
 
-    # def get_cursor_from_json(self, file_name):
-    #     self.posts_cursor = json.load(file_name)
-    #     return self.posts_cursor
+    def get_data_cursor(self, source_name, source_type):
+        if source_type == 'json':
+            items = ijson.items(open("{}\{}.json".format(os.getenv("DATA_DIR"), source_name), 'rb'), 'item')
+        elif source_type == 'mongo':
+            items = self.myclient["reddit"][source_name]
+        return items
 
     def get_cursor_from_mongodb(self, db_name="reddit", collection_name=os.getenv("COLLECTION_NAME")):
         '''
@@ -354,8 +358,6 @@ class Con_DB:
         df = pd.read_csv(path, encoding='UTF8')
         return df
 
-
-
     '''
     This function making a json file from topic's csv file.
     the function filtering the large collection in MongoDB of full posts wsb 2020 and export the collection after filtering to JSON file
@@ -363,6 +365,7 @@ class Con_DB:
     :argument path_to_save_json - full path of directory of saving the json file 
     :argument collection_name - the name of collection(must be exactly the same name that wrote in MongoDB)
     '''
+
     def fromCSVtoJSON(self, path_to_csv, path_to_save_json, collection_name):
         topic_csv = self.read_fromCSV(path_to_csv)
         posts = self.get_cursor_from_mongodb(collection_name=collection_name)
@@ -376,30 +379,3 @@ class Con_DB:
             file.write(']')
 
     def read_posts_from_mongo_write_to_json(self, ids_list, file_name):
-        path = os.getenv('NER_POSTS_FOLDER') + file_name
-        posts = self.get_specific_items_by_object_ids_from_mongodb(ids_list=ids_list, post_or_comment_arg='posts')
-        self.file_reader.write_dict_to_json(path=path, file_name=file_name, dict_to_write=posts.__dict__)
-
-    def get_post_id_from_json_and_write_full_posts(self):
-        path = os.getenv('NER_POSTS_FOLDER') + 'True_NER_per_month.json'
-        dict_file = self.file_reader.read_from_json_to_dict(path)
-        for key, val in dict_file.items():
-            for NER, v in val.items():
-                cursor = self.get_cursor_from_mongodb()
-                NER_TYPE = NER + "_" + v[0][0]
-                post_from_mongo = self.get_full_data_by_object_ids_from_mongodb(ids_list=v[1][1], post_or_comment_arg='post',
-                                                                                NER_TYPE=NER_TYPE)
-                NER_POSTS_FOLDER=''
-                path = NER_POSTS_FOLDER + "NER_posts\\Posts_full"
-                file_name = NER_TYPE + ".json"
-                self.file_reader.write_dict_to_json(path=path,file_name=file_name, dict_to_write=post_from_mongo)
-
-
-    def get_NER_full_post_data(self, NER_TYPE):
-        path = os.getenv('NER_POSTS_FOLDER') + NER_TYPE
-        return self.file_reader.read_from_json_to_dict(PATH=path)
-
-# con_db = Con_DB()
-# cursor = con_db.get_cursor_from_mongodb()
-# data = con_db.get_specific_items_by_object_ids(ids_list=['eici5m'], post_or_comment_arg='post')
-# print(data)

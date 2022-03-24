@@ -1,177 +1,209 @@
+import numpy as np
+from requests.exceptions import ChunkedEncodingError
+from db_utils.Con_DB import Con_DB
 import datetime
 import asyncio
 import json
-import pickle
-import string
-import sys
 import time
 import logging
-
-import prawcore
-import pymongo
-from api_utils.PushshiftApi import PushshiftApi
-from api_utils.reddit_api import reddit_api
+import praw
+import os
+from dotenv import load_dotenv
+from pmaw import PushshiftAPI
 from tqdm import tqdm
 import calendar
-from db_utils.Con_DB import Con_DB
 
-# async def extract_reddit_data_parallel(sub):
-#     url = sub["permalink"]
-#     pushift.convert_time_format(sub)
-#     post_from_reddit = reddit.reddit.request('GET', url)
-#     reddit.convert_time_format(post_from_reddit[0]['data']['children'][0]['data'])
-#     final = {"reddit_api": post_from_reddit, "pushift_api": sub}
-#     return final
+load_dotenv("../.env2")
+
+from pmaw import PushshiftAPI
+import prawcore
+import pymongo
+# from PushshiftApi import PushshiftApi
+# from reddit_api import reddit_api
+from tqdm import tqdm
+import calendar
+
 global chunk_size
-chunk_size = 850 * 1024
-global total_post_len
-total_post_len = 100000000
+chunk_size = 5000
 global data
 data = {}
+global tmp_data
+tmp_data = {}
 global counter
 counter = 5
-global tmp_id
-infile = open('ids.pkl', 'rb')
-tmp_id = pickle.load(infile)
-infile.close()
+global times_praw
+times_praw = []
+global times
+times = []
+global file_name
+file_name = ''
 
 
-async def insert_post(sub, pbar_):
-    global data
+def convert_time_format(comment_or_post):
+    comment_or_post['created_utc'] = datetime.datetime.fromtimestamp(
+        comment_or_post['created_utc']).isoformat().split(
+        "T")
+
+
+async def insert_post(sub, kind, _post_or_comment, pbar_):
+    global tmp_data
     global counter
     global chunk_size
-    global total_post_len
-    logging.info(len(data))
-    if sub['id'] in tmp_id:
-        start_time = time.time()
-        # try:
-        reddit.pushshift.convert_time_format(sub)
-        reddit_post = await reddit.extract_reddit_data_parallel(sub)
-        post = {
-            "post_id": sub["id"],
-            "reddit_api": reddit_post,
-            "pushift_api": sub
-        }
+    global times
+    global times_praw
+    s_time = time.time()
+    # try:
+    if '_reddit' in sub.keys():
+        del sub["_reddit"]
+    if 'subreddit' in sub.keys():
+        del sub["subreddit"]
+    if 'author' in sub.keys():
+        del sub["author"]
+    if 'poll_data' in sub.keys():
+        sub['poll_data'] = str(sub['poll_data'])
+    convert_time_format(sub)
+    post_id = sub["id"]
+    if kind == "reddit_api":
+        tmp_data[post_id] = {}
+        tmp_data[post_id]["post_id"] = post_id
+        sub = dict(sorted(sub.items(), key=lambda item: item[0]))
+        tmp_data[post_id][kind] = sub
+        e_time = time.time()
+        times_praw.append(e_time - s_time)
+    else:
+        if post_id in tmp_data:
+            for k in sub.copy():
+                if k in tmp_data[post_id]["reddit_api"]:
+                    if sub[k] == tmp_data[post_id]["reddit_api"][k]:
+                        del sub[k]
+        else:
+            tmp_data[post_id] = {}
+            tmp_data[post_id]["post_id"] = post_id
+        tmp_data[post_id][kind] = sub
+        e_time = time.time()
+        times.append(e_time - s_time)
+        if len(tmp_data[post_id]) == 3:
+            data[post_id] = tmp_data[post_id].copy()
+            del tmp_data[post_id]
+            chunk_size -= 1
+    pbar_.update(1)
 
-        end_time = time.time()
-        elapsed_time_first_insert = end_time - start_time
-        end_time = time.time()
-        # except pymongo.errors.DuplicateKeyError:
-        #     print(reddit_post["pushift_api"]["id"] + " is already exist!")
-        #     return
-        end_reddit_time = time.time()
-        # con_db.update_to_db(sub["id"], reddit_post)
-        data[sub["id"]] = post
-        pbar_.update(1)
-
-        end_total_time = time.time()
-        elapsed_reddit_time = end_reddit_time - end_time
-        elapsed_second_insert_time = end_total_time - end_reddit_time
-        logging.info("id: {}, Extract from reddit time: {}.".format(sub["id"], elapsed_time_first_insert))
-
-        if sys.getsizeof(data) > chunk_size or len(data) >= total_post_len:
-            start_time_dump = time.time()
-            with open("json_wallstreetbets_2019_data/{}_{}_{}.json".format(collection_name, year, counter), 'w') as f:
-                json.dump(data, f)
-            data = {}
-            counter += 1
-            pbar_.reset()
-            end_time_json = time.time()
-            elapsed_time_json_write = end_time_json - start_time_dump
-            logging.info("id: {}, 'write to json time: {}.".format(sub["id"], elapsed_time_json_write))
-
-
-async def main(_submissions_list):
-    with tqdm(total=len(_submissions_list)) as pbar:
-        await asyncio.gather(*[insert_post(submission, pbar) for submission in _submissions_list])
-
-
-async def fix_reddit_empty_posts():
-    # counter = 0
-    for character in range(4, 8):
-        print(character)
-        curs = mycol.find({'reddit_api': [], 'post_id': {'$regex': '^h{}'.format(character)}})
-        print("here")
-        pbar = tqdm(total=50000)
-        await asyncio.gather(*[fix_one_post(post, pbar) for post in curs])
-        # for post in tqdm(curs):
-        #     await fix_one_post(post, pbar)
+    if chunk_size == 0:
+        start_time_dump = time.time()
+        await dump_data()
+        counter += 1
+        pbar_.reset()
+        logging.info("\nwrite to json time: {}.".format(time.time() - start_time_dump))
 
 
-async def fix_one_post(post, pb):
-    t1 = time.time()
-    pid = post['post_id']
-    push_post = post['pushift_api']
-    try:
-        red_post = await reddit.extract_reddit_data_parallel(push_post)
-        red_t = time.time() - t1
-        await con_db.update_to_db(Id=pid, reddit_post=red_post)
-        upd_t = time.time() - red_t - t1
-        logging.info(
-            "id: {}, reddit time: {}. update time: {}".format(
-                pid, red_t, upd_t))
-        pb.update(1)
-    except prawcore.exceptions.NotFound:
-        logging.info('{} returned 404'.format(pid))
-        return
-    except prawcore.exceptions.ServerError:
-        logging.info('{} returned 500'.format(pid))
-        return
-    except prawcore.exceptions.ResponseException:
-        logging.info('{} returned 502'.format(pid))
-        return
+async def dump_data():
+    global data
+    global file_name
+    mycol.insert_many(data.values())
+    data = {}
+
+
+async def main(_submissions_list, _submissions_list_praw, _post_or_comment):
+    with tqdm(total=max(len(_submissions_list), len(_submissions_list_praw))) as pbar:
+        await asyncio.gather(
+            *[insert_post(submission, 'reddit_api', _post_or_comment, pbar) for submission in _submissions_list_praw])
+        await asyncio.gather(
+            *[insert_post(submission, 'pushift_api', _post_or_comment, pbar) for submission in _submissions_list])
 
 
 if __name__ == '__main__':
     data = {}
     counter = 0
-    while True:
-        logging.getLogger().setLevel(logging.INFO)
-        logging.basicConfig(format='%(asctime)s %(message)s')
-        # parameters
-        con_db = Con_DB()
-        year = 2019
-        # for month in tqdm(range(12, 13, 1)):
-        # for day in tqdm(calendar.monthrange(year, month)):
-        # logging.info("month: {}".format(month))
-        limit = total_post_len
-        start_time = int(datetime.datetime(year, 1, 1).timestamp())
-        # if month == 12:
-        #     end_time = int(datetime.datetime(year+1, 1, 1).timestamp())
-        # else:
-        end_time = int(datetime.datetime(year, 1, 31).timestamp())
+    logging.getLogger().setLevel(logging.INFO)
+    logging.basicConfig(format='%(asctime)s %(message)s')
+    # parameters
+    con_db = Con_DB()
+    year = 2021
+    sub_reddit = 'antiwork'
+    collection_name = sub_reddit
+    # for month in tqdm(range(12, 13, 1)):
+    # for day in tqdm(calendar.monthrange(year, month)):
+    # logging.info("month: {}".format(month))
+    step = 1
+    mycol = con_db.get_cursor_from_mongodb(db_name="reddit_2021", collection_name=collection_name)
+    for post_or_comment in ["comment"]:
+        file_name = "{}_{}_{}.json".format(collection_name, year, post_or_comment)
+        for m in range(1, 13, step):
+            last_day_of_month = calendar.monthrange(year, m)[1]
+            logging.info(last_day_of_month)
+            for d in range(1, last_day_of_month, step):
+                logging.info(f"date:{d}/{m}/{year}")
+                start_time = int(datetime.datetime(year, m, d).timestamp())
+                # if month == 12:
+                #     end_time = int(datetime.datetime(year+1, 1, 1).timestamp())
+                # else:
+                end_time = int(
+                    datetime.datetime(year, m, d + 1).timestamp())
+                # logging.info(f"m={m}")
+                ######
+                pushift = PushshiftAPI(num_workers=12)
+                reddit = praw.Reddit(
+                    client_id=os.getenv('CLIENT_ID'),
+                    client_secret=os.getenv('CLIENT_SECRET'),
+                    user_agent=os.getenv('USER_AGENT'),
+                    username=os.getenv('USER_NAME'),
+                    password=os.getenv('PASSWORD'),
+                    check_for_async=False
+                )
+                logging.info(post_or_comment)
+                times_praw = []
+                times = []
+                submissions_list = []
+                submissions_list_praw = []
+                start_run_time = time.time()
+                if post_or_comment == "post":
+                    try:
+                        submissions_list = pushift.search_submissions(subreddit=sub_reddit,
+                                                                      after=start_time,
+                                                                      before=end_time, safe_exit=True)
+                    except ChunkedEncodingError as e:
+                        logging.warn(f"Error at {d}/{m}/{year}")
+                    end_run_time = time.time()
+                    logging.info("Extract from pushift time: {}".format(end_run_time - start_run_time))
+                    pushift.praw = reddit
+                    try:
+                        submissions_list_praw = pushift.search_submissions(subreddit=sub_reddit,
+                                                                           after=start_time,
+                                                                           before=end_time)
+                    except ChunkedEncodingError as e:
+                        logging.warn(f"Error at {d}/{m}/{year}")
 
-        sub_reddit = 'politics'
-        collection_name = sub_reddit
-        last_index = 0
-        ######
-        mycol = con_db.get_cursor_from_mongodb(collection_name=collection_name)
-        pushift = PushshiftApi()
-        reddit = reddit_api()
-        start_run_time = time.time()
-        submissions_list = []
-        submissions_list = pushift.get_submission(Subreddit=sub_reddit, start_time=start_time, end_time=end_time,
-                                                  Limit=limit)
-        end_time = time.time()
-        elapsed_time = end_time - start_run_time
-        logging.info("Extract from pushift time: {}".format(elapsed_time))
-        submissions_list = submissions_list[last_index:]  # if you want to recover, change last index
-        try:
-            loop = asyncio.get_event_loop()
-            loop.run_until_complete(main(submissions_list))
-            # asyncio.run(main(submissions_list, data, counter))
-            break
-            if len(data) > 0:
-                start_time_dump = time.time()
-                with open("json_politics_2019_data/{}_{}_{}.json".format(collection_name, year, counter), 'w') as f:
-                    json.dump(data, f)
-                data = {}
-                counter += 1
-                pbar_.reset()
-                end_time_json = time.time()
-                elapsed_time_json_write = end_time_json - start_time_dump
-                logging.info("id: {}, 'write to json time: {}.".format(sub["id"], elapsed_time_json_write))
-        except pymongo.errors.CursorNotFound:
-            continue
+                    logging.info("Extract from reddit time: {}".format(time.time() - end_run_time))
+                else:
+                    try:
+                        submissions_list = pushift.search_comments(subreddit=sub_reddit, after=start_time,
+                                                                   before=end_time, safe_exit=True)
+                        if len(submissions_list) == 0:
+                            submissions_list = pushift.search_comments(subreddit=sub_reddit, after=start_time,
+                                                                       before=end_time)
+                    except ChunkedEncodingError as e:
+                        logging.warn(f"Error at {d}/{m}/{year}")
+                    end_run_time = time.time()
+                    logging.info("Extract from pushift time: {}".format(end_run_time - start_run_time))
+                    pushift.praw = reddit
+                    try:
+                        submissions_list_praw = pushift.search_comments(subreddit=sub_reddit,
+                                                                        after=start_time,
+                                                                        before=end_time)
+                    except ChunkedEncodingError as e:
+                        logging.warn(f"Error at {d}/{m}/{year}")
+                    logging.info("Extract from reddit time: {}".format(time.time() - end_run_time))
+                loop = asyncio.get_event_loop()
+                loop.run_until_complete(main(submissions_list, submissions_list_praw, post_or_comment))
+                # asyncio.run(main(submissions_list, data, counter))
+                if len(tmp_data) > 0:
+                    data.update(tmp_data)
+                    tmp_data = {}
+                logging.info(f"Mean time to handle reddit {post_or_comment} is: {np.mean(times_praw)}")
+                logging.info(f"Mean time to handle pushift {post_or_comment} is: {np.mean(times)}")
+        if len(data) > 0:
+            s_time_dump = time.time()
+            loop.run_until_complete((dump_data()))
+            counter += 1
+            logging.info("Last write to json time: {}.".format(time.time() - s_time_dump))
 
-    # asyncio.run(main(submissions_list))
