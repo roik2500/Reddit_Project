@@ -10,8 +10,7 @@ import matplotlib.pyplot as plt
 
 from decimal import Decimal
 from tqdm import tqdm
-# import torch
-# torch.cuda.is_available()
+
 # from transformers import BertTokenizer
 # from transformers import pipeline
 from pprint import pprint
@@ -30,6 +29,8 @@ import numpy as np
 
 from db_utils.FileReader import FileReader
 
+import torch
+
 # from pysentimiento import EmotionAnalyzer
 
 '''
@@ -42,7 +43,7 @@ from db_utils.FileReader import FileReader
 '''
 
 load_dotenv()
-
+torch.cuda.is_available()
 '''
 [[{'label': 'admiration', 'score': 0.00017094481154344976},
   {'label': 'amusement', 'score': 2.571632830949966e-05},
@@ -377,7 +378,7 @@ class EmotionDetection:
         plt.legend()
         plt.savefig(path_to_save_plt + '_' + subreddit_name + '_' + category +
                     '_' + datetime.now().strftime("%H-%M-%S") + ".jpg", transparent=True)
-        plt.show()
+        # plt.show()
 
     '''This method plot graph per emotion(like Fear) for one NER'''
 

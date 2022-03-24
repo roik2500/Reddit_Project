@@ -287,11 +287,11 @@ if __name__ == '__main__':
                                                                            post_need_to_extract=True,
                                                                            post_or_comment_arg='post')
 
-    # print("2")
-    # name_entity_removed.extract_NER_from_data(posts=data_cursor, con_db=con_db,
-    #                                           file_name_to_save='Removed_{}_title_selftext_NER.csv'.format(COLLECTION_NAME),
-    #                                           path_to_folder=removed_resource_path, category='Removed',
-    #                                           is_removed_bool=True, post_or_comment_arg='post')
+    print("2")
+    name_entity_removed.extract_NER_from_data(posts=data_cursor, con_db=con_db,
+                                              file_name_to_save='Removed_{}_title_selftext_NER.csv'.format(COLLECTION_NAME),
+                                              path_to_folder=removed_resource_path, category='Removed',
+                                              is_removed_bool=True, post_or_comment_arg='post')
 
     print("3")
     path = removed_resource_path + 'Removed_{}_title_selftext_NER.csv'.format(COLLECTION_NAME)

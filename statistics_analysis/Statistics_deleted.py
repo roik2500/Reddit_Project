@@ -6,6 +6,9 @@ from pprint import pprint
 from datetime import datetime
 
 
+from db_utils.FileReader import FileReader
+
+
 class Statistic_Deleted:
     def __init__(self):
         # create a new object of connection to DB
@@ -93,12 +96,12 @@ class Statistic_Deleted:
 
 class Statistic:
 
-    def __init__(self):
+    def __init__(self,collection_name=os.getenv("COLLECTION_NAME")):
         self.con_db = Con_DB()
         # self.objects = self.con_db.get_cursor_from_mongodb(db_name='local',
         #                                          collection_name=os.getenv("COLLECTION_NAME")) #.find({})
         self.objects = self.con_db.get_cursor_from_mongodb(db_name='reddit',
-                                                          collection_name=os.getenv("COLLECTION_NAME")).find({})
+                                                          collection_name=collection_name).find({})
 
         self.post_quantity_per_month = {}
         self.post_quantity_per_day = {}
@@ -106,30 +109,116 @@ class Statistic:
 
         self.comment_quantity_per_month = {}
         self.comment_quantity_per_day = {}
-
+        self.file_reader = FileReader()
 
     def get_quantity(self, post_or_comment_str, dict_month, dict_day):
-
-        for object in tqdm(self.objects):
-            post_or_comments = self.con_db.get_text_from_post_OR_comment(_object=object, post_or_comment=post_or_comment_str)
+        lst_ids = {}
+        c = 0
+        for _object in self.objects:
+            post_or_comments = self.con_db.get_text_from_post_OR_comment(_object=_object,
+                                                                         post_or_comment=post_or_comment_str)
             for post_or_comment in post_or_comments:
+                if post_or_comment[2] not in lst_ids.keys():
+                    lst_ids[post_or_comment[2]] = post_or_comment[3]
+                    c += 1
+                    if c % 200000 == 1:
+                        print("counter 1 - ", c)
+                else:
+                    print("duplicate id: ", post_or_comment[2], " link_id: ", post_or_comment[3])
+                    print("counter 2 - ", c)
+                    # lst_ids.append(post_or_comment[2])
                 date_object, date_key = self.get_date_keys(post_or_comment)
                 if date_key not in dict_month.keys():
-                    dict_month[date_key] = 1
+                    dict_month[date_key] = 1 # initialize key
                 else:
                     dict_month[date_key] += 1
-
                 if date_object not in dict_day.keys():
-                    dict_day[date_object] = 1
+                    dict_day[date_object] = 1  # initialize key
                 else:
                     dict_day[date_object] += 1
 
-        print("dict_month")
-        pprint(dict_month)
-
-        print("dict_day")
-        pprint(dict_day)
         return dict_month, dict_day
+
+    def get_quantity_by_status(self, post_or_comment_str, dict_month, dict_day):
+        empty_dict_initialize = {"deleted": 0,
+                                 "removed": 0,
+                                 "poll": 0,
+                                 "shadow_ban": 0,
+                                 "exists": 0,
+                                 "automod_filtered": 0,
+                                 }
+        lst_automod_filtered=[]
+        for obj in self.objects:
+            post_or_comments = self.con_db.get_text_from_post_OR_comment(_object=obj, post_or_comment=post_or_comment_str)[0]
+            status = self.con_db.generate_post_status(obj)
+            date_object, date_key = self.get_date_keys(post_or_comments)
+            if status == 'automod_filtered':
+                lst_automod_filtered.append(post_or_comments[2])
+
+            if date_key not in dict_month.keys():
+                dict_month[date_key] = empty_dict_initialize.copy()  # initialize key
+            dict_month[date_key][status] += 1
+
+            if date_object not in dict_day.keys():
+                dict_day[date_object] = empty_dict_initialize.copy()  # initialize key
+            dict_day[date_object][status] += 1
+
+        path_to_folder = r'G:\.shortcut-targets-by-id\1lJuBfy-iW6jibopA67C65lpds3B1Topb\Reddit Censorship Analysis\final_project\outputs\statistics\statistics_by_status_and_time'
+
+        self.file_reader.write_dict_to_json(path=path_to_folder,
+                                            file_name="\\" + subredddit+"_dict_month",
+                                            dict_to_write=dict_month
+                                            )
+        self.file_reader.write_dict_to_json(path=path_to_folder,
+                                            file_name="\\" +subredddit+"_dict_day",
+                                            dict_to_write=dict_day
+                                            )
+
+    def get_comments_quantity_by_status(self, post_or_comment_str, dict_month, dict_day):
+        empty_dict_initialize = {"removed": 0,
+                                 "exists": 0,
+                                 "retrieved": 0
+                                }
+        c=0
+        for obj in self.objects:
+            post_or_comments = self.con_db.get_text_from_post_OR_comment(_object=obj, post_or_comment=post_or_comment_str)[0]
+            if post_or_comments == None:
+                c+=1
+                continue
+            status = self.con_db.generate_comment_status(obj)
+            date_object, date_key = self.get_date_keys(post_or_comments)
+
+            if date_key not in dict_month.keys():
+                dict_month[date_key] = empty_dict_initialize.copy()  # initialize key
+            dict_month[date_key][status] += 1
+
+            if date_object not in dict_day.keys():
+                dict_day[date_object] = empty_dict_initialize.copy()  # initialize key
+            dict_day[date_object][status] += 1
+
+        print("quantity of fake comments  - ", c)
+        path_to_folder = r'G:\.shortcut-targets-by-id\1lJuBfy-iW6jibopA67C65lpds3B1Topb\Reddit Censorship Analysis\final_project\outputs\statistics\statistics_by_status_and_time_comments'
+
+        self.file_reader.write_dict_to_json(path=path_to_folder,
+                                            file_name="\\" + subredddit +"_dict_month",
+                                            dict_to_write=dict_month
+                                            )
+        self.file_reader.write_dict_to_json(path=path_to_folder,
+                                            file_name="\\" +subredddit+"_dict_day",
+                                            dict_to_write=dict_day
+                                            )
+
+
+        # print("dict_month")
+        # pprint(dict_month)
+        #
+        # print("dict_day")
+        # pprint(dict_day)
+        #
+        # print("automod_filterd")
+        # pprint(lst_automod_filtered)
+
+        # return dict_month, dict_day
 
     def get_removed_quantity(self, post_or_comment_str, dict_month, dict_day, automod_filterd):
 
@@ -141,16 +230,17 @@ class Statistic:
             post_or_comments = self.con_db.get_text_from_post_OR_comment(_object=obj, post_or_comment=post_or_comment_str)
             for post_or_comment in post_or_comments:
                 date_object, date_key = self.get_date_keys(post_or_comment)
+
                 if post_or_comment[-1]:
                     if date_key in dict_month.keys():
                         dict_month[date_key] += 1
                     else:
-                        dict_month[date_key] = 1
+                        dict_month[date_key] = 1  # initialize key
 
                     if date_object in dict_day.keys():
                         dict_day[date_object] += 1
                     else:
-                        dict_day[date_object] = 1
+                        dict_day[date_object] = 1   # initialize key
 
         print("dict_month")
         pprint(dict_month)
@@ -161,7 +251,6 @@ class Statistic:
         print('automod_filterd')
         pprint(automod_filterd)
         return dict_month #, dict_day
-
 
     def get_date_keys(self, post_or_comment):
         date_object = post_or_comment[1]
@@ -180,16 +269,25 @@ if __name__ == '__main__':
     #
     # print("total_removed {}".format(total_removed))
 
-    s = Statistic()
+    s = Statistic(collection_name=os.getenv("COLLECTION_NAME"))
     # print("post")
     # s.get_quantity("post", s.post_quantity_per_month, s.post_quantity_per_day)
-    # print("comment")
-    # s.get_quantity("comment", s.comment_quantity_per_month, s.comment_quantity_per_day)
+    print("comments")
+    sudreddits = s.con_db.get_collections_name_from_db(db_name='reddit')
+    for subredddit in sudreddits:
+        print("subredddit", subredddit)
+        if not subredddit.__contains__("_comments"):
+            continue
+        if subredddit != os.getenv("COLLECTION_NAME"):
+            s = Statistic(subredddit)
+        s.get_comments_quantity_by_status("comment", s.comment_quantity_per_month, s.comment_quantity_per_day)
+        s.comment_quantity_per_month = {}
+        s.comment_quantity_per_day = {}
 
     # print('posts deleted quantity')
     # s.get_removed_quantity("post", s.post_quantity_per_month, s.post_quantity_per_day, s.automod_filterd)
-    print('comments deleted quantity')
-    s.get_removed_quantity("comment", s.post_quantity_per_month, s.post_quantity_per_day, s.automod_filterd)
+    # print('comments deleted quantity')
+    # s.get_removed_quantity("comment", s.post_quantity_per_month, s.post_quantity_per_day, s.automod_filterd)
 
 
     '''
@@ -224,6 +322,7 @@ if __name__ == '__main__':
      '2020/8': 16407,
      '2020/9': 17153}
     dict_day
+
     {'2020-01-01': 104,
      '2020-01-02': 206,
      '2020-01-03': 308,

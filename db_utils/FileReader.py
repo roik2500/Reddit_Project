@@ -1,6 +1,6 @@
 # from psaw import PushshiftAPI
 # from pmaw import PushshiftAPI as PushshiftApiPmaw
-import datetime
+from datetime import datetime
 import requests
 import json
 import pandas as pd
@@ -85,6 +85,19 @@ class FileReader:
             mydict = dict(reader)
         return mydict
 
+    def testing_recorder(self, features_data,  list_of_data_to_record, classifier_data, csv_record_path=f"G:\.shortcut-targets-by-id\1lJuBfy-iW6jibopA67C65lpds3B1Topb\Reddit Censorship Analysis\final_project\Features\testing\test_xl.csv"):
+        columns = ["run_ID", "Classifier_option", "class_name", "class_record_quantity", "k_best_features", "number_of_features", "accuracy", "precision", "recall", "f1", "auc"]  # "roc",
+        ID = pd.read_csv(csv_record_path).tail(1).values.tolist()[0]
+        ID = [ID[0]+1]
+        now = datetime.now() # current date and time
+        # time = now.strftime("%H:%M:%S")
+        # exec_date = now.strftime("%m/%d/%Y")
+        # date_time = [str(exec_date), str(time)] + date_time
+        data = ID  + classifier_data + features_data + list_of_data_to_record
+        with open(csv_record_path, 'a', newline='') as f_object:
+            writer = csv.writer(f_object)
+            writer.writerow(data)
+            f_object.close()
 
 
 # Press the green button in the gutter to run the script.
@@ -121,7 +134,3 @@ if __name__ == '__main__':
     # #         removed_counter+=1
     # #         if(submisstion["selftext"] is not None):
     # #             removed_and_selftext_counter+=1
-
-
-
-

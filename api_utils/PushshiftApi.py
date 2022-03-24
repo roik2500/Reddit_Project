@@ -151,7 +151,7 @@ class PushshiftApi(object):
         except:
             print("something wrong")
 
-    def read_from_csv(path):
+    def read_from_csv(self, path):
         df = pd.read_csv(path)
         return df
 

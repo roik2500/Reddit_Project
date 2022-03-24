@@ -93,11 +93,8 @@ class Con_DB:
     comment return Array that the comments separated by '..', '...' 
     '''
 
-    # {"body": comment['data']['body'],
-    #             "created": self.convert_time_format(comment['data']['created_utc'])[0],
-    #             "id": comment['data']['id'],
-    #             "link_id": comment['data']['link_id'][2:],
-    #             "is_removed": self.is_removed(comment, "comment", "Removed")}
+    def get_collections_name_from_db(self, db_name):
+        return [collection for collection in self.myclient[db_name].list_collection_names()]
 
     def comments_to_dicts(self, comments, created):
         results = []  # create list for results
@@ -123,16 +120,16 @@ class Con_DB:
             results += item  # add converted item to results
         return results  # return all converted comments
 
-    def comments_to_lists(self, comments, created, link_id):  # link_id = post_id
+    def comments_to_lists(self, comments, created, link_id):
         results = []  # create list for results
         for comment in comments:  # iterate over comments
             if 'created_utc' in comment['data']:
                 created = self.convert_time_format(comment['data']['created_utc'])[0]
-            id = comment['data']['id']
+            _id = comment['data']['id']
             is_removed = self.is_removed(comment, "comment", "Removed")
             text = ''
-            if "body" in comment["data"] and not comment['data']['body'] == "[removed]" \
-                    and comment['data']['body'] != "[deleted]":  # we comment text from reddit. Not Removed content
+            if "body" in comment["data"] and not comment['data']['body'] == "[removed]" and comment['data'][
+                'body'] != "[deleted]":  # we comment text from reddit. Not Removed content
                 text = comment['data']['body']
 
             elif "body" in comment["data"] and comment['data'][
@@ -144,12 +141,12 @@ class Con_DB:
                 # pushshift_comment = self.pushshift_api.get_comments_by_comments_ids(ids_list=[id])
                 # text = [c for c in pushshift_comment][0]['body']
                 # if text != '[removed]' and comment['data']['author'] != '[deleted]':
-                #     all_user_commnets = self.reddit_api.get_user_commnets(reddit_user_name=comment['data']['author'])
-                #     text = self.reddit_api.get_removed_comment_from_reddit(user_comments=all_user_commnets, removed_comment_id=id)
+                #    all_user_commnets = self.reddit_api.get_user_commnets(reddit_user_name=comment['data']['author'])
+                #    text = self.reddit_api.get_removed_comment_from_reddit(user_comments=all_user_commnets, removed_comment_id=id)
                 # print('retrived comment from user profile', text)
-            text = self.parser.remove_URL(text)
-            item = [[text, created, id, link_id, is_removed]]  # create list from comment
 
+            item = [[text, created, _id, link_id, is_removed]]  # create list from comment
+            # item = [comment]
             if 'replies' in comment["data"] and len(comment['data']['replies']) > 0:
                 replies = comment['data']['replies']['data']['children']
                 item += self.comments_to_lists(replies, created=created,
@@ -160,19 +157,32 @@ class Con_DB:
 
     def get_text_from_post_OR_comment(self, _object, post_or_comment):
         if post_or_comment == 'post':
-            id = _object['pushift_api']['id']
+            id = _object['post_id']
             created = _object['reddit_api']['post']['created_utc'][0]
-            text = _object['pushift_api']['title']
-            is_removed = self.is_removed(_object, "post", "Removed")
-            if "selftext" in _object['pushift_api'].keys() and not _object['pushift_api']["selftext"] == "[removed]" \
+            text = _object['reddit_api']['post']['title']
+            is_removed = self.is_removed(_object, "comment", "Removed")
+            if "selftext" in _object['pushift_api'].keys() and _object['pushift_api']["selftext"] != "[removed]" \
                     and _object['pushift_api']["selftext"] != "[deleted]":
                 text = text + " " + _object['pushift_api']["selftext"]
             text = self.parser.remove_URL(text)
             return [[text, created, id, is_removed]]
 
         elif post_or_comment == 'comment':
-            result = self.comments_to_lists(_object['reddit_api']['comments'], '2020-01-01', _object['post_id'])
-            return result
+            # result = self.comments_to_lists(_object['reddit_api']['comments'], '2020-01-01', _object['post_id'])
+            # if 'link_id' in _object['data']:
+            #     result = self.comments_to_lists([_object], '2020-01-01', _object['data']['link_id'])
+            # else:
+            #     result = self.comments_to_lists([_object], '2020-01-01', "000")
+            Id = _object['data']['id']
+            if 'created_utc' in _object['data']:
+                created = self.convert_time_format(_object['data']['created_utc'])[0]
+                text = _object['data']['body']
+                if 'pushshift_body' in _object['data'].keys() and _object['data']['pushshift_body'] != '':
+                    text = _object['data']['pushshift_body']
+                is_removed = self.is_removed(_object, "comment", "Removed")
+            else:
+                return [None]
+            return [[text, created, Id, is_removed]]
 
     def insert_to_db(self, reddit_post):
         self.posts_cursor.insert_one(reddit_post)
@@ -236,32 +246,38 @@ class Con_DB:
         #         update_cursor.update_one({"_id": obj['_id']}, {"$set": {"body_removed_comment": id_to_comment_body}})
         removed_comments_iter = self.posts_cursor.find({"data.body": "[removed]"})
         removed_comments_ids_from_pushshift = [c['data']['id'] for c in removed_comments_iter]
-        pushshift_comments = self.pushshift_api.get_comments_by_comments_ids(ids_list=removed_comments_ids_from_pushshift)
-        pushshift_comments = [(c['id'], c['body']) for c in pushshift_comments if c['body'] != '[removed]']
+        pushshift_comments = self.pushshift_api.get_comments_by_comments_ids(
+            ids_list=removed_comments_ids_from_pushshift)
+        pushshift_comments = [(c['id'], c['body']) for c in pushshift_comments if
+                              c['body'] != '[removed]' and (c['body'] != '')]
         for comment_id, comment_body in pushshift_comments:
-        # post_id_removed_comments[obj['post_id']] = []
-        # comments = self.comments_to_lists(obj['reddit_api']['comments'], '2020-01-01', obj['post_id'])
-        # for comment in comments:
-        #     if comment[0] == '[removed]' and comment[-1] == True:
-        #         post_id_removed_comments[obj['post_id']].append(comment[2])
-        # if len(post_id_removed_comments[obj['post_id']]) == 0:
-        #     del post_id_removed_comments[obj['post_id']]
-        #     continue
-        # else:
-        #     ids = post_id_removed_comments[obj['post_id']]
-        #     try:
-        #         pushshift_comments = self.pushshift_api.get_comments_by_comments_ids(ids_list=ids)
-        #     except:
-        #         continue
-        #     pushshift_comments = [c for c in pushshift_comments]
-        #     id_to_comment_body = {}
-        #     for pushshift_comment in pushshift_comments:
-        #         id_to_comment_body[pushshift_comment['id']] = pushshift_comment['body']
-        #     posts_number += 1
+            if comment_number % 1000 == 0:
+                print("comment_number - retrived", comment_number)
+            # post_id_removed_comments[obj['post_id']] = []
+            # comments = self.comments_to_lists(obj['reddit_api']['comments'], '2020-01-01', obj['post_id'])
+            # for comment in comments:
+            #     if comment[0] == '[removed]' and comment[-1] == True:
+            #         post_id_removed_comments[obj['post_id']].append(comment[2])
+            # if len(post_id_removed_comments[obj['post_id']]) == 0:
+            #     del post_id_removed_comments[obj['post_id']]
+            #     continue
+            # else:
+            #     ids = post_id_removed_comments[obj['post_id']]
+            #     try:
+            #         pushshift_comments = self.pushshift_api.get_comments_by_comments_ids(ids_list=ids)
+            #     except:
+            #         continue
+            #     pushshift_comments = [c for c in pushshift_comments]
+            #     id_to_comment_body = {}
+            #     for pushshift_comment in pushshift_comments:
+            #         id_to_comment_body[pushshift_comment['id']] = pushshift_comment['body']
+            #     posts_number += 1
             # print("posts_number", posts_number)
             comment_number += 1
             # print("comment_number", comment_number)
             update_cursor.update_one({"data.id": comment_id}, {"$set": {"data.pushshift_body": comment_body}})
+        print("comment_number - retrived", comment_number)
+        print("DONE")
 
     def chose_relevant_data(self, collection_name):
         posts_cursor = self.get_cursor_from_mongodb(collection_name=collection_name)
@@ -393,6 +409,18 @@ class Con_DB:
         if post_comment == "post":
             if 'selftext' in post['reddit_api']['post'].keys():
                 if category == "Removed":
+                    if post['reddit_api']['post']['is_robot_indexable'] == False:
+                        if post['reddit_api']['post']['selftext'] == "[removed]":
+                            return True
+                        elif post['reddit_api']['post']['selftext'].__contains__('[removed]'):
+                            return True  # this is pool
+                        elif post['reddit_api']['post']['selftext'] == '':
+                            return True  # blanked
+                        else:
+                            return True  # shadow ban
+
+                    return False  # exists
+
                     if not post['reddit_api']['post']['selftext'].__contains__('[deleted]'):
                         return not post['reddit_api']['post']['is_robot_indexable']
                     return False
@@ -406,13 +434,13 @@ class Con_DB:
             #             return True
             return not post['reddit_api']['post']['is_robot_indexable']
         elif post_comment == "comment":
-            if 'body' in post["data"].keys():
+            if 'body' in post['data'].keys():
                 if category == "Removed":
-                    if post["data"]['body'] == '[removed]':
+                    if post['data']['body'] == '[removed]':
                         return True
                     return False
                 elif category == "NotRemoved":
-                    if not post["data"]['body'] == '[removed]':
+                    if not post['data']['body'] == '[removed]':
                         return True
             return True  # was False and shai change to True because if there is no body so it was removed
 
@@ -494,15 +522,96 @@ class Con_DB:
         print("posts_that_have_body_not_removed", len(removed_posts_comments_ids.keys()))
         pprint(removed_posts_comments_ids)
 
+    ''' collection that I open MRS, cons, crypt '''
 
-con_db = Con_DB()
-con_db.get_cursor_from_mongodb()
-# a = con_db.posts_cursor.find({"post_id": {"$gt": "es8vrt"}})
-# print(a)
-# b = [A for A in a]
-# print(b)
-# con_db.count_retrived_removed_comments()
-con_db.set_removed_comments_in_mongo()
-# cursor = con_db.get_cursor_from_mongodb()
-# data = con_db.get_specific_items_by_object_ids(ids_list=['eici5m'], post_or_comment_arg='post')
-# print(data)
+    def copy_comments(self, new_collection):
+        for _object in self.posts_cursor.find({}):
+            # if _object["post_id"] == "fbev7j" or _object["post_id"] == "fbfar6":
+            post_or_comments = self.get_text_from_post_OR_comment(_object=_object,
+                                                                  post_or_comment="comment")
+            if post_or_comments != []:
+                new_collection.insert_many(post_or_comments)
+
+    def generate_post_status(self, post):
+        status = None
+        if ('removed_by_category' in post['reddit_api']['post'].keys()) and (
+                post['reddit_api']['post']['removed_by_category'] == 'automod_filtered'):
+            status = 'automod_filtered'
+
+        elif post['reddit_api']['post']['selftext'] == '[deleted]':
+            status = 'deleted'
+
+        elif post['reddit_api']['post']['selftext'] == '[removed]' and post['reddit_api']['post'][
+            'is_robot_indexable'] == False:
+            status = 'removed'
+
+        elif post['reddit_api']['post']['selftext'].__contains__('[removed]') and post['reddit_api']['post'][
+            'selftext'].__contains__('poll') and \
+                post['reddit_api']['post']['is_robot_indexable'] == False:
+            # return True  # this is pool
+            status = "poll"
+
+        elif (not post['reddit_api']['post']['selftext'].__contains__('[removed]')) and post['reddit_api']['post'][
+            'selftext'] != '[deleted]' and \
+                post['reddit_api']['post']['is_robot_indexable'] == False:
+            status = 'shadow_ban'
+
+        elif post['reddit_api']['post']['is_robot_indexable'] == True:
+            status = 'exists'
+
+        return status
+        self.posts_cursor.update_one({"_id": post['_id']}, {"$set": {"status": status}})
+
+    def generate_comment_status(self, comment):
+        status = None
+        if 'body' in comment['data'].keys() and comment['data']['body'] == "[removed]":
+            status = 'removed'
+            if 'pushshift_body' in comment['data'].keys() and comment['data']['pushshift_body'] != '[removed]':
+                status = 'retrieved'
+        else:
+            status = 'exists'
+        return status
+
+    def get_title_len(self, obj):
+        return len(obj['reddit_api']['post']['title'])
+
+    def get_selftext_len(self, obj):
+        return len(obj['pushift_api']['selftext'])
+
+    def get_number_of_comments(self, obj):
+        return obj['reddit_api']['post']['num_comments']
+
+    def get_id(self, obj, Type):
+        if Type == 'post':
+            return obj['post_id']
+
+        if Type == 'comment':
+            return obj['data']['id']
+
+
+if __name__ == '__main__':
+    con_db = Con_DB()
+    # con_db.get_cursor_from_mongodb()
+    # con_db.generate_post_status()
+
+    for sub in con_db.get_collections_name_from_db(db_name="reddit"):
+        if sub.__contains__("_comments"):
+            cursor = con_db.get_cursor_from_mongodb(db_name="reddit", collection_name=sub)
+            for obj in cursor.find({}):
+                con_db.convert_time_format(obj['data']['created_utc'])
+
+    # new_con_db = Con_DB()
+    # new_collection_cursor = new_con_db.get_cursor_from_mongodb(db_name="reddit", collection_name="technology")
+
+    # new_collection_cursor.update({}, {"$unset": {"data.replies": ""}}, multi=True)
+    # con_db.copy_comments(new_collection_cursor)
+    # a = con_db.posts_cursor.find({"post_id": {"$gt": "es8vrt"}})
+    # print(a)
+    # b = [A for A in a]
+    # print(b)
+    # con_db.count_retrived_removed_comments()
+
+    # con_db.set_removed_comments_in_mongo()
+    # cursor = con_db.get_cursor_from_mongodb()
+    # data = con_db.get_specific_items_by_object_ids(ids_list=['eici5m'], post_or_comment_arg='post')
+    # print(data)
