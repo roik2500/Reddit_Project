@@ -1,7 +1,6 @@
 import pymongo
 import logging
 
-logging.getLogger().setLevel(logging.WARN)
 logging.basicConfig(format='%(asctime)s %(message)s')
 
 
@@ -15,9 +14,17 @@ class DataLayer:
         collection = db[f"{collection_name}_{submission_kind}"]
         return collection
 
-    def get_collection_cursor(self, year, collection_name, submission_kind, fields_list=None):
-        collection = self.get_collection(self, year, collection_name, submission_kind)
-        return collection.find({}, {field: 1 for field in fields_list})
+    def get_collection_cursor(self, year, collection_name, submission_kind, fields_dict=None):
+        collection = self.get_collection(year, collection_name, submission_kind)
+        return collection.find({}, fields_dict)
+
+    @staticmethod
+    def get_author(submission):
+        return submission["reddit_api"]["author"]
+
+    @staticmethod
+    def get_num_comments(submission):
+        return submission["reddit_api"]["num_comments"]
 
     @staticmethod
     def get_post_id(submission):
@@ -39,8 +46,7 @@ class DataLayer:
         if 'title' in sub_submission:
             return sub_submission['title']
         else:
-            self.logger.warning(
-                f"{self.get_post_id(submission)} is a comment and does not contains title")
+            # self.logger.warning(f"{self.get_post_id(submission)} is a comment and does not contains title")
             return ''
 
     def get_selftext(self, sub_kind, submission):
@@ -53,11 +59,9 @@ class DataLayer:
             if selftext in submission["pushift_api"]:
                 sub_submission = submission["pushift_api"]
             else:
-                self.logger.warning(
-                    f"{self.get_post_id(submission)} has the same text in pushift and reddit")
+                # self.logger.warning(f"{self.get_post_id(submission)} has the same text in pushift and reddit")
                 sub_submission = submission["reddit_api"]
         else:
-            self.logger.warning(
-                f"{self.get_post_id(submission)} does not contains pushift_api field. you got reddit_api selftext")
+            # self.logger.warning(f"{self.get_post_id(submission)} does not contains pushift_api field. you got reddit_api selftext")
             sub_submission = submission["reddit_api"]
         return sub_submission[selftext]
